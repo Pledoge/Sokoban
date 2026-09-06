@@ -136,7 +136,11 @@ namespace Sokoban.Game
             if (!_strokeCells.Add(key)) return;                // 本笔已涂过
             if (_core.TryPaint(x, y))
             {
-                RefreshCell(x, y);
+                // 玩家/敌人是全局唯一对象：放置会清掉旧位置的数据，需整盘刷新颜色（否则旧格残留绿色）
+                if (_core.CurrentTool == EditorTool.Player || _core.CurrentTool == EditorTool.Enemy)
+                    RefreshAll();
+                else
+                    RefreshCell(x, y);
                 UpdateStatus("已放置 " + ToolName(_core.CurrentTool));
             }
             else

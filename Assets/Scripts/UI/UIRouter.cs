@@ -362,6 +362,9 @@ namespace Sokoban.Game
             if (_selModeTag != null)
                 _selModeTag.text = mode == Mode.Extended ? "拓展模式 · 邪恶推箱人" : "经典模式";
 
+            // 每次进选关都重扫关卡目录（编辑器刚保存的关卡立即出现，无需重启）
+            if (_game != null) _game.ReloadLevels();
+
             // 收集当前模式下的全部关卡及其在 GameBootstrap._all 中的全局下标（StartLevelAt 用全局下标）
             var all = _game.AllLevels;
             _lsAll.Clear();

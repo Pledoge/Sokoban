@@ -56,10 +56,13 @@ namespace Sokoban.Game
         /// <summary>从主菜单进入某模式的选关页（每次重扫，包含本会话新保存的关卡）。</summary>
         public void ShowLevelSelect(Mode mode)
         {
-            _all = LoadBuiltInLevels();
+            ReloadLevels();
             _mode = mode;
             UIRouter.I.ShowLevelSelect(mode);
         }
+
+        /// <summary>重扫 Resources/Levels（保存新关后立即生效，无需重启）。</summary>
+        public void ReloadLevels() => _all = LoadBuiltInLevels();
 
         /// <summary>直接试玩一个自定义关卡（编辑器「试玩」按钮调用，无需落盘）。</summary>
         public bool CameFromEditor { get; private set; }   // 当前对局是否来自编辑器试玩（暂停/结算页显示「返回编辑器」）

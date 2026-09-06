@@ -538,6 +538,41 @@ namespace Sokoban.Game
             return null;
         }
 
+        // -------------------------------------------------- 编辑态预览（未进 Play 也铺满）
+        /// <summary>
+        /// 供 Editor 脚本在「未进 Play 的 Game 视口」调用：把各页 CanvasScaler 接管为 Constant 模式并驱动 scaleFactor，
+        /// 公式与 Play 模式 ApplyLayoutForAspect 完全一致，使预览与 Play 排版一致（竖版页在 16:9 下背景铺满、不裁切）。
+        /// 仅改缩放，不动任何 UI 元素 pos/size，保留用户手调布局。无 UnityEditor 依赖，可安全留在 Runtime 程序集。
+        /// </summary>
+        static readonly Dictionary<Page, string> _editRootName = new Dictionary<Page, string>
+        {
+            { Page.MainMenu, "MainMenu" }, { Page.LevelSelect, "LevelSelect" }, { Page.Playing, "GameHUD" },
+            { Page.Pause, "PausePanel" }, { Page.Win, "WinPanel" }, { Page.LevelEditor, "LevelEditor" },
+        };
+
+        public static void ApplyEditPreviewScale(int w, int h)
+        {
+            if (w == 0 || h == 0) return;
+            bool wide = w >= h;
+            var design = wide ? _designLandscape : _designPortrait;
+            foreach (Page p in System.Enum.GetValues(typeof(Page)))
+            {
+                var go = Root(_editRootName[p]);
+                if (go == null) continue;
+                var scaler = go.GetComponent<UnityEngine.UI.CanvasScaler>();
+                if (scaler == null) continue;
+                float target = Mathf.Min(w / design[p].x, h / design[p].y);
+                // 仅在确有变化时才写，避免每帧把场景标记为 dirty
+                if (scaler.uiScaleMode != UnityEngine.UI.CanvasScaler.ScaleMode.ConstantPixelSize
+                    || Mathf.Abs(scaler.scaleFactor - target) > 1e-3f)
+                {
+                    scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ConstantPixelSize;
+                    scaler.dynamicPixelsPerUnit = 2;
+                    scaler.scaleFactor = target;
+                }
+            }
+        }
+
         void Bind(Page page, string btnName, UnityEngine.Events.UnityAction action)
         {
             var root = _pages[page];

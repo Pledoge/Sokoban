@@ -18,7 +18,6 @@ namespace Sokoban.Solver
             var terrain = s.Terrain;
 
             bool IsWall(int idx) => idx < 0 || idx >= terrain.Length || terrain[idx] == (int)CellType.Wall;
-            bool IsGoal(int idx) => !dead[idx] && terrain[idx] == (int)CellType.Goal;
 
             for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
@@ -57,14 +56,17 @@ namespace Sokoban.Solver
                 bool touchesWall = false;
                 bool hasGoal = false;
                 int idxOf(int k) => horizontal ? a * w + k : k * w + a;
+                // horizontal：a 是行号 → 上/下邻居 ±w，用 a 判界；vertical：a 是列号 → 左/右邻居 ±1，用 a 判界。
+                // （旧实现 vertical 误用 k 判界，w>h 的关卡会数组越界）
                 bool wallAt(int k) => horizontal
                     ? (a > 0 && terrain[idxOf(k) - w] == (int)CellType.Wall) || (a < h - 1 && terrain[idxOf(k) + w] == (int)CellType.Wall)
-                    : (k > 0 && terrain[idxOf(k) - 1] == (int)CellType.Wall) || (k < w - 1 && terrain[idxOf(k) + 1] == (int)CellType.Wall);
+                    : (a > 0 && terrain[idxOf(k) - 1] == (int)CellType.Wall) || (a < w - 1 && terrain[idxOf(k) + 1] == (int)CellType.Wall);
 
                 while (b < inner)
                 {
                     int idx = idxOf(b);
-                    if (terrain[idx] != (int)CellType.Empty) break;
+                    // 箱子可占据的格 = Empty / Goal；Goal 不允许断段（否则含终点的贴墙段被误标死格 → 误判无解）
+                    if (terrain[idx] != (int)CellType.Empty && terrain[idx] != (int)CellType.Goal) break;
                     if (!wallAt(b)) break;
                     touchesWall = true;
                     if (terrain[idx] == (int)CellType.Goal) hasGoal = true;

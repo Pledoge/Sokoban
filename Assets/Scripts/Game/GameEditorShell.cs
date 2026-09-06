@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
@@ -27,6 +28,11 @@ namespace Sokoban.Game
         Image[,] _cells;                   // 行优先：[y, x]
         Button[] _modeBtns;
         int _toolBtnCount;
+
+        // —— 按住拖动连续放置 ——
+        bool _dragSetup;                                       // Update 委托已挂
+        int _hoverX = -1, _hoverY = -1;
+        readonly HashSet<long> _strokeCells = new HashSet<long>();   // 本笔划已涂过的格子（每格每笔只变一次）
 
         bool _initialized;
 
@@ -95,6 +101,57 @@ namespace Sokoban.Game
 
         public void Detach() { /* 隐藏即可 */ }
 
+        // ------------------------------------------------------- 按住拖动连续放置
+        void Update()
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                _strokeCells.Clear();                          // 新的一笔
+                TryPaintCell(_hoverX, _hoverY);                // 原地按下也立即放置
+            }
+            else if (Input.GetMouseButtonUp(0))
+            {
+                _strokeCells.Clear();
+            }
+        }
+
+        /// <summary>格子指针进入（由 CellDrag 回调）：按住左键时连续放置，本笔划内每格只变一次。</summary>
+        public void OnCellHover(int x, int y)
+        {
+            _hoverX = x; _hoverY = y;
+            if (Input.GetMouseButton(0)) TryPaintCell(x, y);
+        }
+
+        /// <summary>指针离开格子：清除 hover，防止随后点工具按钮时误在旧格子落笔。</summary>
+        public void OnCellLeave(int x, int y)
+        {
+            if (_hoverX == x && _hoverY == y) { _hoverX = -1; _hoverY = -1; }
+        }
+
+        void TryPaintCell(int x, int y)
+        {
+            if (x < 0 || y < 0 || _cells == null
+                || y >= _cells.GetLength(0) || x >= _cells.GetLength(1)) return;
+            long key = (long)y * _core.Data.width + x;
+            if (!_strokeCells.Add(key)) return;                // 本笔已涂过
+            if (_core.TryPaint(x, y))
+            {
+                RefreshCell(x, y);
+                UpdateStatus("已放置 " + ToolName(_core.CurrentTool));
+            }
+            else
+                UpdateStatus($"({x},{y}) 拒绝：不允许该放置");
+        }
+
+        /// <summary>挂在每个格子上的指针进入/离开转发器（运行时 AddComponent，不入 prefab）。</summary>
+        class CellDrag : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+        {
+            public int x, y;
+            public GameEditorShell shell;
+            public void OnPointerEnter(PointerEventData e) { if (shell != null) shell.OnCellHover(x, y); }
+            public void OnPointerExit(PointerEventData e)  { if (shell != null) shell.OnCellLeave(x, y); }
+        }
+
         // ------------------------------------------------------- 名称输入框（运行时生成，免改 prefab）
         /// <summary>页面顶部中间加一个关卡名称输入框，保存时写入 Data.name。</summary>
         void EnsureNameInput()
@@ -108,8 +165,8 @@ namespace Sokoban.Game
             var go = new GameObject("LE_Name");
             go.transform.SetParent(transform, false);
             var rt = go.AddComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f); rt.pivot = new Vector2(0.5f, 1f);
-            rt.anchoredPosition = new Vector2(0, -22);
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f); rt.pivot = new Vector2(0f, 1f);
+            rt.anchoredPosition = new Vector2(20, -22);        // 顶部左侧，避开右上用户手调的「试玩」按钮
             rt.sizeDelta = new Vector2(420, 64);
             var img = go.AddComponent<Image>();
             img.color = new Color(1f, 1f, 1f, 0.94f);
@@ -277,6 +334,10 @@ namespace Sokoban.Game
                 var btn = go.GetComponent<Button>();
                 btn.targetGraphic = img;
                 btn.onClick.AddListener(() => OnCellClick(cx, cy));
+
+                // 拖动连刷：指针进入回调（OnCellClick 只处理单击落笔，滑动由 OnCellHover 接管）
+                var drag = go.AddComponent<CellDrag>();
+                drag.x = cx; drag.y = cy; drag.shell = this;
             }
 
             UpdateSizeLabel();
@@ -284,13 +345,8 @@ namespace Sokoban.Game
 
         void OnCellClick(int x, int y)
         {
-            if (_core.TryPaint(x, y))
-            {
-                RefreshCell(x, y);
-                UpdateStatus("已放置 " + ToolName(_core.CurrentTool));
-            }
-            else
-                UpdateStatus($"({x},{y}) 拒绝：不允许该放置");
+            _hoverX = x; _hoverY = y;
+            TryPaintCell(x, y);                    // 单击与拖动统一走去重路径，避免同格重复绘制
         }
 
         void RefreshCell(int x, int y)

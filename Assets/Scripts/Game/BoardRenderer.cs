@@ -132,7 +132,7 @@ namespace Sokoban.Game
                 _sprites[kv.Key] = tex != null
                     ? Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height),
                                     new Vector2(0.5f, 0.5f), tex.width)
-                    : MakeSprite(FallbackColors[kv.Value], IsRounded(kv.Key));
+                    : MakeSprite(FallbackColors[kv.Key], IsRounded(kv.Key));
             }
             var goldTex = Resources.Load<Texture2D>("Art/box_on_goal");
             if (goldTex != null)

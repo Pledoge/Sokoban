@@ -3555,7 +3555,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 7432664582972233876}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: f24d5d85f04838648bb770863bcf9457, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   docId: soko_ingame_editor

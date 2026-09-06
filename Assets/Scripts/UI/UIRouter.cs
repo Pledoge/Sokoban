@@ -42,6 +42,7 @@ namespace Sokoban.Game
         readonly List<Button> _lsTabBtns = new List<Button>();
         readonly List<Image> _lsTabImgs = new List<Image>();
         InputField _lsSearch;
+        readonly List<GameObject> _editorReturnBtns = new List<GameObject>();
         Button _lsPrev, _lsNext;
         Text _lsPageLabel;
         int LsPageSize => _lsBtns.Count > 0 ? _lsBtns.Count : 5;
@@ -144,6 +145,9 @@ namespace Sokoban.Game
             Bind(Page.Win, "BtnNext",   () => _game.NextLevel());
             Bind(Page.Win, "BtnReplay", () => _game.ReplayLevel());
             Bind(Page.Win, "BtnMenu",   () => _game.BackToMenu());
+
+            // —— 编辑器试玩：暂停/结算页的「返回编辑器」按钮（仅试玩对局显示） ——
+            EnsureEditorReturnButtons();
 
             _hudLevel = DeepText(_pages[Page.Playing].transform, "LevelName");
             _hudSteps = DeepText(_pages[Page.Playing].transform, "StepsText");
@@ -305,6 +309,12 @@ namespace Sokoban.Game
             foreach (var kv in _pages)
                 if (kv.Value != null) kv.Value.SetActive(kv.Key == page);
 
+            // 「返回编辑器」按钮：仅编辑器试玩对局的 暂停/结算 页显示
+            bool showBack = (page == Page.Pause || page == Page.Win)
+                            && _game != null && _game.CameFromEditor;
+            foreach (var b in _editorReturnBtns)
+                if (b != null) b.SetActive(showBack);
+
             // 切换到游戏内编辑器页：自动 Attach 壳
             if (page == Page.LevelEditor)
             {
@@ -315,6 +325,31 @@ namespace Sokoban.Game
                     if (shell == null) shell = root.gameObject.AddComponent<GameEditorShell>();
                     shell.Attach();
                 }
+            }
+        }
+
+        /// <summary>在暂停/结算页克隆「返回菜单」按钮，生成「返回编辑器」（默认隐藏，试玩对局才显示）。</summary>
+        void EnsureEditorReturnButtons()
+        {
+            foreach (var p in new[] { Page.Pause, Page.Win })
+            {
+                var root = _pages[p];
+                if (root == null) continue;
+                if (DeepFind(root.transform, "BtnBackEditor") != null) continue;   // 幂等（域重载后重跑 Init）
+                var tpl = DeepFind(root.transform, "BtnMenu");
+                if (tpl == null) continue;
+                var go = Instantiate(tpl.gameObject, root.transform, false);
+                go.name = "BtnBackEditor";
+                var rt = go.GetComponent<RectTransform>();
+                rt.anchorMin = rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(1, 1);
+                rt.anchoredPosition = new Vector2(-20, -20);
+                rt.sizeDelta = new Vector2(220, 64);
+                var label = go.GetComponentInChildren<Text>();
+                if (label != null) label.text = "返回编辑器";
+                var btn = go.GetComponent<Button>();
+                if (btn != null) { btn.onClick.RemoveAllListeners(); btn.onClick.AddListener(() => _game.BackToEditor()); }
+                go.SetActive(false);
+                _editorReturnBtns.Add(go);
             }
         }
 

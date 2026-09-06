@@ -62,6 +62,8 @@ namespace Sokoban.Game
         }
 
         /// <summary>直接试玩一个自定义关卡（编辑器「试玩」按钮调用，无需落盘）。</summary>
+        public bool CameFromEditor { get; private set; }   // 当前对局是否来自编辑器试玩（暂停/结算页显示「返回编辑器」）
+
         public void PlayCustomLevel(LevelData data)
         {
             if (data == null) return;
@@ -69,8 +71,17 @@ namespace Sokoban.Game
             _mode = data.mode;
             _queue = new LevelData[] { data };
             _idx = 0;
+            CameFromEditor = true;
             LoadCurrent();
             UIRouter.I.Show(UIRouter.Page.Playing);
+        }
+
+        /// <summary>从试玩对局（暂停/结算页）返回关卡编辑器。编辑器壳未销毁，直接切页即可续编。</summary>
+        public void BackToEditor()
+        {
+            CameFromEditor = false;
+            controller.Pause(false);
+            UIRouter.I.Show(UIRouter.Page.LevelEditor);
         }
 
         /// <summary>从选关页进入全列表第 index 关。</summary>
@@ -81,6 +92,7 @@ namespace Sokoban.Game
             _mode = lv.mode;
             _queue = System.Array.FindAll(_all, l => l.mode == _mode);
             _idx = System.Array.IndexOf(_queue, lv);
+            CameFromEditor = false;
             LoadCurrent();
             UIRouter.I.Show(UIRouter.Page.Playing);
         }
@@ -96,6 +108,7 @@ namespace Sokoban.Game
             }
             _mode = mode;
             _idx = 0;
+            CameFromEditor = false;
             LoadCurrent();
             UIRouter.I.Show(UIRouter.Page.Playing);
         }
@@ -126,7 +139,11 @@ namespace Sokoban.Game
         public void NextLevel()
         {
             _idx++;
-            if (_queue == null || _idx >= _queue.Length) { BackToMenu(); return; }   // 通关全部 → 回菜单
+            if (_queue == null || _idx >= _queue.Length)
+            {
+                if (CameFromEditor) { BackToEditor(); return; }   // 试玩单关通关 → 回编辑器而非主菜单
+                BackToMenu(); return;                             // 通关全部 → 回菜单
+            }
             LoadCurrent();
             UIRouter.I.Show(UIRouter.Page.Playing);      // 从结算页切回游戏页
         }

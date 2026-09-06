@@ -47,7 +47,8 @@ namespace Sokoban.EditorCore
             if (lv.mode == Mode.Classic && enemies > 0)
                 r.Error("经典模式不能放置邪恶推箱人");
 
-            // 外墙闭合性：从棋盘边界所有非墙格做 flood fill（4 连通，可穿过空地/障碍/对象），
+            // 外墙闭合性：从棋盘边界所有可通行格做 flood fill（4 连通）。
+            // 阻挡格 = Wall + Obstacle（与 SokobanRules.IsBlocked 语义一致：障碍不可穿越，也能围出区域），
             // 被淹到的 = 「外部」。对象（玩家/箱子/终点/敌人）落在外部 → 外墙未把它们围住。
             var flooded = FloodOutside(board, lv.width, lv.height);
 
@@ -79,9 +80,9 @@ namespace Sokoban.EditorCore
 
             void TryEnqueue(int x, int y)
             {
-                if (x < 0 || y < 0 || x >= w || y >= h) return;
-                if (flooded[x, y]) return;
-                if (board[x, y] == CellType.Wall) return;
+            if (x < 0 || y < 0 || x >= w || y >= h) return;
+            if (flooded[x, y]) return;
+            if (board[x, y] == CellType.Wall || board[x, y] == CellType.Obstacle) return;   // 障碍同墙，阻挡洪水
                 flooded[x, y] = true;
                 queue.Enqueue((x, y));
             }

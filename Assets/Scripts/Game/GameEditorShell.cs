@@ -23,6 +23,7 @@ namespace Sokoban.Game
         RectTransform _grid;
         Transform[] _toolBtns;
         Text _status, _sizeLabel;
+        InputField _nameInput;             // 关卡名称输入框（保存时写入 Data.name）
         Image[,] _cells;                   // 行优先：[y, x]
         Button[] _modeBtns;
         int _toolBtnCount;
@@ -84,6 +85,7 @@ namespace Sokoban.Game
             BindBtn("BtnWidth",    () => { Resize(+1, 0); });
             BindBtn("BtnHeight",   () => { Resize(0, +1); });
             BindBtn("BtnBack",     () => Sokoban.Game.UIRouter.I.Show(UIRouter.Page.MainMenu));
+            EnsureNameInput();
             EnsurePlayButton();
 
             RebuildGrid();
@@ -92,6 +94,71 @@ namespace Sokoban.Game
         }
 
         public void Detach() { /* 隐藏即可 */ }
+
+        // ------------------------------------------------------- 名称输入框（运行时生成，免改 prefab）
+        /// <summary>页面顶部中间加一个关卡名称输入框，保存时写入 Data.name。</summary>
+        void EnsureNameInput()
+        {
+            if (DeepFind(transform, "LE_Name") != null) return;
+
+            Font font = null;
+            var anyText = GetComponentInChildren<Text>(true);
+            if (anyText != null) font = anyText.font;
+
+            var go = new GameObject("LE_Name");
+            go.transform.SetParent(transform, false);
+            var rt = go.AddComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f); rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0, -22);
+            rt.sizeDelta = new Vector2(420, 64);
+            var img = go.AddComponent<Image>();
+            img.color = new Color(1f, 1f, 1f, 0.94f);
+            img.raycastTarget = true;
+            var inp = go.AddComponent<InputField>();
+            inp.targetGraphic = img;
+            inp.transition = Selectable.Transition.ColorTint;
+
+            var txt = new GameObject("Text");
+            txt.transform.SetParent(go.transform, false);
+            var trt = txt.AddComponent<RectTransform>();
+            trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+            trt.offsetMin = new Vector2(16, 6); trt.offsetMax = new Vector2(-16, -6);
+            var t = txt.AddComponent<Text>();
+            t.font = font; t.fontSize = 30; t.alignment = TextAnchor.MiddleLeft;
+            t.color = new Color(0.25f, 0.14f, 0.01f);
+
+            var ph = new GameObject("Placeholder");
+            ph.transform.SetParent(go.transform, false);
+            var prt = ph.AddComponent<RectTransform>();
+            prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one;
+            prt.offsetMin = new Vector2(16, 6); prt.offsetMax = new Vector2(-16, -6);
+            var pt = ph.AddComponent<Text>();
+            pt.font = font; pt.fontSize = 30; pt.alignment = TextAnchor.MiddleLeft;
+            pt.color = new Color(0.55f, 0.5f, 0.45f);
+            pt.text = "输入关卡名称…";
+
+            inp.textComponent = t;
+            inp.placeholder = pt;
+            _nameInput = inp;
+        }
+
+        /// <summary>把输入框内容写进 Data.name；id 为默认值时派生一个稳定 id（ASCII 名直接用，否则时间戳）。</summary>
+        void ApplyNameToData()
+        {
+            var name = _nameInput != null ? _nameInput.text.Trim() : "";
+            if (string.IsNullOrEmpty(_core.Data.name) || _core.Data.name == "未命名关卡")
+                _core.Data.name = string.IsNullOrEmpty(name) ? "未命名关卡" : name;
+            else if (!string.IsNullOrEmpty(name))
+                _core.Data.name = name;
+
+            if (string.IsNullOrEmpty(_core.Data.id) || _core.Data.id == "custom_00")
+            {
+                var sanitized = System.Text.RegularExpressions.Regex.Replace(name, @"[^a-zA-Z0-9_]", "");
+                _core.Data.id = sanitized.Length > 0
+                    ? "custom_" + sanitized.ToLower()
+                    : "custom_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            }
+        }
 
         // ------------------------------------------------------- 试玩按钮（运行时克隆「校验」按钮，免改 prefab）
         /// <summary>在编辑器页右上角加一个「试玩」按钮；页面不销毁，故用存在性守护避免重复。</summary>
@@ -120,6 +187,7 @@ namespace Sokoban.Game
         {
             var r = _core.Validate();
             if (!r.Ok) { UpdateStatus("校验失败，无法试玩：" + string.Join("; ", r.Errors)); return; }
+            ApplyNameToData();                     // 试玩 HUD 显示当前输入的关卡名
             var data = _core.Data.DeepClone();
             Sokoban.Game.UIRouter.I.PlayLevel(data);
         }
@@ -268,17 +336,33 @@ namespace Sokoban.Game
         void DoValidate()
         {
             var r = _core.Validate();
-            UpdateStatus(r.Ok
-                ? "校验通过" + (r.Warnings.Count > 0 ? "（" + string.Join("; ", r.Warnings) + "）" : "")
-                : "校验失败：" + string.Join("; ", r.Errors));
+            if (!r.Ok)
+            {
+                UpdateStatus("校验失败：" + string.Join("; ", r.Errors));
+                return;
+            }
+
+            // 结构合法后再做真·有解性检测：复用运行时同一套 SokobanRules.Step 的正向 BFS（障碍=不可通行，语义与游玩一致）
+            var solve = Sokoban.Solver.SolverRouter.Solve(_core.Data, 3000);
+            var warn = r.Warnings.Count > 0 ? "（" + string.Join("; ", r.Warnings) + "）" : "";
+            switch (solve.status)
+            {
+                case Sokoban.Solver.SolveStatus.Solvable:
+                    UpdateStatus($"校验通过{warn}，且有解（约 {solve.steps} 步）");
+                    break;
+                case Sokoban.Solver.SolveStatus.Unsolvable:
+                    UpdateStatus("校验通过，但【无解】—— 请调整箱子/终点/障碍布局（含障碍阻挡判断）");
+                    break;
+                default:
+                    UpdateStatus("校验通过" + warn + "；求解超时（关卡较大，暂不能确定是否有解）");
+                    break;
+            }
         }
         void DoSave()
         {
             var r = _core.Validate();
             if (!r.Ok) { UpdateStatus("校验失败，禁止保存：" + string.Join("; ", r.Errors)); return; }
-            // 默认 ID：若为空填时间戳
-            if (string.IsNullOrEmpty(_core.Data.id))
-                _core.Data.id = "user_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            ApplyNameToData();
             _core.Data.source = "custom";          // 编辑器保存的关卡标记为「自制」，选关页与导入关卡分开
             var dir = Path.Combine(Application.dataPath, "Resources/Levels");
             Directory.CreateDirectory(dir);
@@ -287,7 +371,7 @@ namespace Sokoban.Game
 #if UNITY_EDITOR
             UnityEditor.AssetDatabase.Refresh();
 #endif
-            UpdateStatus("已保存 " + _core.Data.id + ".json");
+            UpdateStatus($"已保存 {_core.Data.id}.json（{_core.Data.name}）");
         }
         void DoNew()
         {

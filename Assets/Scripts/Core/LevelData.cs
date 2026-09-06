@@ -21,6 +21,8 @@ namespace Sokoban.Core
 
         public int[] cells;                 // 扁平存储，长度 = width * height
 
+        public string source = "";          // 来源：""=内置 / "custom"=编辑器自制 / "imported"=外部关卡集导入
+
         public Vec2Int playerSpawn = new Vec2Int(1, 1);
         public Vec2Int enemySpawn = new Vec2Int(-99, -99);   // 不存在时用界外值表示
 
@@ -52,6 +54,7 @@ namespace Sokoban.Core
             return new LevelData
             {
                 id = id, name = name, mode = mode, width = width, height = height, author = author,
+                source = source,
                 cells = (int[])cells.Clone(),
                 playerSpawn = playerSpawn,
                 enemySpawn = enemySpawn,

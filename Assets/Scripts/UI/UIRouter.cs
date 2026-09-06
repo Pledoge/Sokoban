@@ -38,6 +38,9 @@ namespace Sokoban.Game
         readonly List<int> _lsFiltered = new List<int>();             // 过滤（搜索）后的全局下标，用于分页
         int _lsPage;
         string _lsQuery = "";
+        int _lsTab;                                    // 0=全部 1=内置 2=自制 3=导入
+        readonly List<Button> _lsTabBtns = new List<Button>();
+        readonly List<Image> _lsTabImgs = new List<Image>();
         InputField _lsSearch;
         Button _lsPrev, _lsNext;
         Text _lsPageLabel;
@@ -333,6 +336,8 @@ namespace Sokoban.Game
                 if (all[i].mode == mode) { _lsAll.Add(all[i]); _lsGlobalIdx.Add(i); }
             }
             _lsQuery = "";
+            _lsTab = 0;
+            RefreshTabVisual();
             if (_lsSearch != null) _lsSearch.text = "";
             _lsPage = 0;
             RefreshLevelList();
@@ -433,6 +438,25 @@ namespace Sokoban.Game
                 _lsSearch = inp;
             }
 
+            // —— 分类标签：全部 / 内置 / 自制 / 导入（搜索框上方一行） ——
+            if (DeepFind(parent, "LS_Tab0") == null)
+            {
+                string[] tabNames = { "全部", "内置", "自制", "导入" };
+                for (int i = 0; i < tabNames.Length; i++)
+                {
+                    int tab = i;
+                    var b = MakeLsButton(parent, "LS_Tab" + i, tabNames[i],
+                        new Vector2(-210 + i * 140, 448),
+                        () => { _lsTab = tab; _lsPage = 0; RefreshTabVisual(); RefreshLevelList(); });
+                    b.GetComponent<RectTransform>().sizeDelta = new Vector2(128, 56);
+                    var lab = b.GetComponentInChildren<Text>();
+                    if (lab != null) lab.fontSize = 26;
+                    _lsTabBtns.Add(b);
+                    _lsTabImgs.Add(b.GetComponent<Image>());
+                }
+                RefreshTabVisual();
+            }
+
             // —— 分页：上一页 / 页码 / 下一页 ——
             if (DeepFind(parent, "LS_Prev") == null)
             {
@@ -449,6 +473,29 @@ namespace Sokoban.Game
                 _lsPageLabel.font = _uiFont;
                 _lsPageLabel.color = new Color(0.25f, 0.14f, 0.01f);
                 _lsPageLabel.fontSize = 28; _lsPageLabel.alignment = TextAnchor.MiddleCenter;
+            }
+        }
+
+        /// <summary>分类标签选中态着色：选中烫金，未选淡奶油。</summary>
+        void RefreshTabVisual()
+        {
+            for (int i = 0; i < _lsTabImgs.Count; i++)
+            {
+                if (_lsTabImgs[i] == null) continue;
+                _lsTabImgs[i].color = i == _lsTab
+                    ? new Color(1f, 0.784f, 0.341f, 1f)
+                    : new Color(1f, 1f, 1f, 0.75f);
+            }
+        }
+
+        static bool TabMatch(LevelData lv, int tab)
+        {
+            switch (tab)
+            {
+                case 1: return lv.source != "custom" && lv.source != "imported";   // 内置（含旧档无标记）
+                case 2: return lv.source == "custom";
+                case 3: return lv.source == "imported";
+                default: return true;
             }
         }
 
@@ -482,6 +529,7 @@ namespace Sokoban.Game
             var q = _lsQuery.Trim().ToLower();
             for (int i = 0; i < _lsAll.Count; i++)
             {
+                if (!TabMatch(_lsAll[i], _lsTab)) continue;
                 if (string.IsNullOrEmpty(q) ||
                     _lsAll[i].name.ToLower().Contains(q) ||
                     _lsAll[i].id.ToLower().Contains(q) ||

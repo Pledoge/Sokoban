@@ -279,6 +279,7 @@ namespace Sokoban.Game
             // 默认 ID：若为空填时间戳
             if (string.IsNullOrEmpty(_core.Data.id))
                 _core.Data.id = "user_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            _core.Data.source = "custom";          // 编辑器保存的关卡标记为「自制」，选关页与导入关卡分开
             var dir = Path.Combine(Application.dataPath, "Resources/Levels");
             Directory.CreateDirectory(dir);
             var path = Path.Combine(dir, _core.Data.id + ".json");

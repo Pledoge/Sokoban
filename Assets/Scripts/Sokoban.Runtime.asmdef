@@ -1,0 +1,6 @@
+{
+    "name": "Sokoban.Runtime",
+    "rootNamespace": "Sokoban",
+    "references": [],
+    "autoReferenced": true
+}

@@ -1,0 +1,75 @@
+{
+  "format": "ui-builder",
+  "version": 2,
+  "docId": "soko_hud",
+  "docName": "GameHUD",
+  "meta": { "screenWidth": 1280, "screenHeight": 720, "exportMode": "full" },
+  "tree": [
+    {
+      "name": "InfoPanel", "type": "panel", "id": "hud_info",
+      "rect": { "anchorMin": [0,1], "anchorMax": [0,1], "pivot": [0,1], "pos": [20,-20], "size": [360,136] },
+      "style": { "color": "rgba(255,252,244,0.92)", "sprite": "round", "raycast": false, "shadow": true },
+      "children": [
+        {
+          "name": "LevelName", "type": "text", "id": "hud_level",
+          "rect": { "anchorMin": [0,1], "anchorMax": [1,1], "pivot": [0,1], "pos": [24,-18], "size": [312,44] },
+          "text": { "content": "[tut_01] 第一步 · 经典", "fontSize": 28, "color": "#412402", "align": "middle-left", "bold": true, "lineSpacing": 1 },
+          "children": []
+        },
+        {
+          "name": "SepLine", "type": "panel", "id": "hud_sep",
+          "rect": { "anchorMin": [0,0.5], "anchorMax": [1,0.5], "pivot": [0.5,0.5], "pos": [0,0], "size": [0,2] },
+          "style": { "color": "rgba(232,185,49,0.45)", "sprite": "none", "raycast": false },
+          "children": []
+        },
+        {
+          "name": "StepsText", "type": "text", "id": "hud_steps",
+          "rect": { "anchorMin": [0,0], "anchorMax": [1,0], "pivot": [0,0], "pos": [24,20], "size": [312,40] },
+          "text": { "content": "步数 0     撤销 0", "fontSize": 26, "color": "#6B5B45", "align": "middle-left", "bold": false, "lineSpacing": 1 },
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": "BtnPause", "type": "button", "id": "hud_btn_pause",
+      "rect": { "anchorMin": [1,1], "anchorMax": [1,1], "pivot": [1,1], "pos": [-20,-20], "size": [104,104] },
+      "text": { "content": "暂停", "fontSize": 30, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true },
+      "children": []
+    },
+    {
+      "name": "BtnUndo", "type": "button", "id": "hud_btn_undo",
+      "rect": { "anchorMin": [1,1], "anchorMax": [1,1], "pivot": [1,1], "pos": [-140,-20], "size": [104,104] },
+      "text": { "content": "撤销", "fontSize": 30, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true },
+      "children": []
+    },
+    {
+      "name": "BtnRedo", "type": "button", "id": "hud_btn_redo",
+      "rect": { "anchorMin": [1,1], "anchorMax": [1,1], "pivot": [1,1], "pos": [-260,-20], "size": [104,104] },
+      "text": { "content": "重做", "fontSize": 30, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true },
+      "children": []
+    },
+    {
+      "name": "BtnReset", "type": "button", "id": "hud_btn_reset",
+      "rect": { "anchorMin": [1,1], "anchorMax": [1,1], "pivot": [1,1], "pos": [-380,-20], "size": [104,104] },
+      "text": { "content": "重置", "fontSize": 30, "color": "#6B5B45", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "style": { "color": "#F5EDD8", "sprite": "round", "raycast": true, "shadow": true },
+      "children": []
+    },
+    {
+      "name": "HintBar", "type": "panel", "id": "hud_hintbar",
+      "rect": { "anchorMin": [0.5,0], "anchorMax": [0.5,0], "pivot": [0.5,0], "pos": [0,20], "size": [760,52] },
+      "style": { "color": "rgba(65,36,2,0.42)", "sprite": "round", "raycast": false },
+      "children": [
+        {
+          "name": "Hint", "type": "text", "id": "hud_hint",
+          "rect": { "anchorMin": [0,0], "anchorMax": [1,1], "pivot": [0.5,0.5], "pos": [0,0], "size": [0,0] },
+          "text": { "content": "方向键 / WASD 移动 · Z 撤销 · Y 重做 · R 重置 · N 下一关", "fontSize": 24, "color": "#FFF6E0", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+          "children": []
+        }
+      ]
+    }
+  ]
+}

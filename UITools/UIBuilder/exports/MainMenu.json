@@ -1,0 +1,73 @@
+{
+  "format": "ui-builder",
+  "version": 2,
+  "docId": "soko_main",
+  "docName": "MainMenu",
+  "meta": { "screenWidth": 720, "screenHeight": 1280, "exportMode": "full" },
+  "tree": [
+    {
+      "name": "Bg", "type": "panel", "id": "bg",
+      "rect": { "anchorMin": [0,0], "anchorMax": [1,1], "pivot": [0.5,0.5], "pos": [0,0], "size": [0,0] },
+      "style": { "color": "#FFF6E0", "sprite": "none", "raycast": true, "bgImage": "bg_main.png", "fit": "cover" },
+      "children": []
+    },
+    {
+      "name": "Logo", "type": "image", "id": "logo",
+      "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-36], "size": [380,380] },
+      "image": { "src": "logo_frog.png", "fit": "contain" },
+      "children": []
+    },
+    {
+      "name": "Title", "type": "text", "id": "title",
+      "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-444], "size": [640,80] },
+      "text": { "content": "推箱子黄金无敌至尊版", "fontSize": 56, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "children": []
+    },
+    {
+      "name": "Subtitle", "type": "text", "id": "subtitle",
+      "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-548], "size": [640,36] },
+      "text": { "content": "经典玩法 · 镜像对决 · 关卡工坊", "fontSize": 24, "color": "#6B5B45", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+      "children": []
+    },
+    {
+      "name": "Divider", "type": "panel", "id": "divider",
+      "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,0], "pos": [0,-608], "size": [200,6] },
+      "style": { "color": "#E8B931", "sprite": "round", "raycast": false },
+      "children": []
+    },
+    {
+      "name": "BtnClassic", "type": "button", "id": "btn_classic",
+      "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-642], "size": [460,116] },
+      "text": { "content": "经典模式", "fontSize": 40, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true },
+      "children": []
+    },
+    {
+      "name": "BtnExtended", "type": "button", "id": "btn_ext",
+      "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-786], "size": [460,116] },
+      "text": { "content": "拓展模式", "fontSize": 40, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true },
+      "children": []
+    },
+    {
+      "name": "BtnEditor", "type": "button", "id": "btn_editor",
+      "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-930], "size": [460,100] },
+      "text": { "content": "关卡编辑器", "fontSize": 32, "color": "#6B5B45", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+      "style": { "color": "#F5EDD8", "sprite": "round", "raycast": true, "shadow": true },
+      "children": []
+    },
+    {
+      "name": "BtnQuit", "type": "button", "id": "btn_quit",
+      "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-1058], "size": [240,76] },
+      "text": { "content": "退出", "fontSize": 26, "color": "#9C8C6E", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+      "style": { "color": "#EFE9DC", "sprite": "round", "raycast": true },
+      "children": []
+    },
+    {
+      "name": "Version", "type": "text", "id": "version",
+      "rect": { "anchorMin": [0.5,0], "anchorMax": [0.5,0], "pivot": [0.5,0], "pos": [0,-24], "size": [400,24] },
+      "text": { "content": "v1.0 · Sokoban GOE", "fontSize": 18, "color": "#9C8C6E", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+      "children": []
+    }
+  ]
+}

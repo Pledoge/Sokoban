@@ -1,0 +1,60 @@
+{
+  "format": "ui-builder",
+  "version": 2,
+  "docId": "soko_select",
+  "docName": "LevelSelect",
+  "meta": { "screenWidth": 720, "screenHeight": 1280, "exportMode": "full" },
+  "tree": [
+    {
+      "name": "Bg", "type": "panel", "id": "sel_bg",
+      "rect": { "anchorMin": [0,0], "anchorMax": [1,1], "pivot": [0.5,0.5], "pos": [0,0], "size": [0,0] },
+      "style": { "color": "#FFF6E0", "sprite": "none", "raycast": true, "bgImage": "bg_main.png", "fit": "cover" },
+      "children": []
+    },
+    {
+      "name": "Title", "type": "text", "id": "sel_title",
+      "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-36], "size": [640,80] },
+      "text": { "content": "选择关卡", "fontSize": 56, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "children": []
+    },
+    {
+      "name": "ModeTag", "type": "text", "id": "sel_mode",
+      "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-132], "size": [640,36] },
+      "text": { "content": "经典模式", "fontSize": 26, "color": "#B8860B", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "children": []
+    },
+    {
+      "name": "Divider", "type": "panel", "id": "sel_div",
+      "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,0], "pos": [0,-188], "size": [200,6] },
+      "style": { "color": "#E8B931", "sprite": "round", "raycast": false },
+      "children": []
+    },
+    { "name": "LevelBtn_0", "type": "button", "id": "sel_lv0",
+      "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [0,260], "size": [520,108] },
+      "text": { "content": "01 · 第一步", "fontSize": 34, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true }, "children": [] },
+    { "name": "LevelBtn_1", "type": "button", "id": "sel_lv1",
+      "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [0,128], "size": [520,108] },
+      "text": { "content": "02 · 关卡", "fontSize": 34, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true }, "children": [] },
+    { "name": "LevelBtn_2", "type": "button", "id": "sel_lv2",
+      "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [0,-4], "size": [520,108] },
+      "text": { "content": "03 · 关卡", "fontSize": 34, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true }, "children": [] },
+    { "name": "LevelBtn_3", "type": "button", "id": "sel_lv3",
+      "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [0,-136], "size": [520,108] },
+      "text": { "content": "04 · 关卡", "fontSize": 34, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true }, "children": [] },
+    { "name": "LevelBtn_4", "type": "button", "id": "sel_lv4",
+      "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [0,-268], "size": [520,108] },
+      "text": { "content": "05 · 关卡", "fontSize": 34, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+      "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true }, "children": [] },
+    {
+      "name": "BtnBack", "type": "button", "id": "sel_back",
+      "rect": { "anchorMin": [0.5,0], "anchorMax": [0.5,0], "pivot": [0.5,0], "pos": [0,-72], "size": [280,88] },
+      "text": { "content": "返回", "fontSize": 28, "color": "#6B5B45", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+      "style": { "color": "#F5EDD8", "sprite": "round", "raycast": true, "shadow": true },
+      "children": []
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "format": "ui-builder",
+  "version": 2,
+  "docId": "soko_win",
+  "docName": "WinPanel",
+  "meta": { "screenWidth": 1280, "screenHeight": 720, "exportMode": "full" },
+  "tree": [
+    {
+      "name": "Dim", "type": "panel", "id": "win_dim",
+      "rect": { "anchorMin": [0,0], "anchorMax": [1,1], "pivot": [0.5,0.5], "pos": [0,0], "size": [0,0] },
+      "style": { "color": "rgba(30,20,5,0.52)", "sprite": "none", "raycast": true },
+      "children": []
+    },
+    {
+      "name": "Card", "type": "panel", "id": "win_card",
+      "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [0,0], "size": [560,620] },
+      "style": { "color": "rgba(255,252,244,0.97)", "sprite": "round", "raycast": true, "shadow": true },
+      "children": [
+        {
+          "name": "TopAccent", "type": "panel", "id": "win_accent",
+          "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-40], "size": [120,10] },
+          "style": { "color": "#E8B931", "sprite": "round", "raycast": false },
+          "children": []
+        },
+        {
+          "name": "WinTitle", "type": "text", "id": "win_title",
+          "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-88], "size": [480,84] },
+          "text": { "content": "★ 通关！", "fontSize": 56, "color": "#B8860B", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "children": []
+        },
+        {
+          "name": "SubTitle", "type": "text", "id": "win_subtitle",
+          "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-176], "size": [480,36] },
+          "text": { "content": "奶蛙推箱手又赢了一局", "fontSize": 26, "color": "#9C8C6E", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+          "children": []
+        },
+        {
+          "name": "StatsCard", "type": "panel", "id": "win_stats_card",
+          "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [0,64], "size": [440,120] },
+          "style": { "color": "#F8EFDA", "sprite": "round", "raycast": false },
+          "children": [
+            {
+              "name": "StatsText", "type": "text", "id": "win_stats",
+              "rect": { "anchorMin": [0,0], "anchorMax": [1,1], "pivot": [0.5,0.5], "pos": [0,0], "size": [0,0] },
+              "text": { "content": "步数 12     撤销 3", "fontSize": 32, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": "BtnNext", "type": "button", "id": "win_btn_next",
+          "rect": { "anchorMin": [0.5,0], "anchorMax": [0.5,0], "pivot": [0.5,0], "pos": [0,168], "size": [440,108] },
+          "text": { "content": "下一关", "fontSize": 40, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true },
+          "children": []
+        },
+        {
+          "name": "BtnReplay", "type": "button", "id": "win_btn_replay",
+          "rect": { "anchorMin": [0.5,0], "anchorMax": [0.5,0], "pivot": [0.5,0], "pos": [0,44], "size": [440,100] },
+          "text": { "content": "重玩本关", "fontSize": 32, "color": "#6B5B45", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+          "style": { "color": "#F5EDD8", "sprite": "round", "raycast": true, "shadow": true },
+          "children": []
+        },
+        {
+          "name": "BtnMenu", "type": "button", "id": "win_btn_menu",
+          "rect": { "anchorMin": [0.5,0], "anchorMax": [0.5,0], "pivot": [0.5,0], "pos": [0,-48], "size": [260,72] },
+          "text": { "content": "回主菜单", "fontSize": 26, "color": "#9C8C6E", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+          "style": { "color": "#EFE9DC", "sprite": "round", "raycast": true },
+          "children": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+    "name": "Sokoban.Editor",
+    "rootNamespace": "Sokoban.EditorTools",
+    "references": [
+        "Sokoban.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ]
+}

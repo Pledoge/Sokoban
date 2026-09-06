@@ -1,0 +1,148 @@
+{
+  "format": "ui-builder",
+  "version": 2,
+  "docId": "soko_ingame_editor",
+  "docName": "LevelEditor",
+  "meta": { "screenWidth": 720, "screenHeight": 1280, "exportMode": "full" },
+  "tree": [
+    {
+      "name": "Bg", "type": "panel", "id": "ed_bg",
+      "rect": { "anchorMin": [0,0], "anchorMax": [1,1], "pivot": [0.5,0.5], "pos": [0,0], "size": [0,0] },
+      "style": { "color": "#FFF6E0", "sprite": "none", "raycast": true, "bgImage": "bg_main.png", "fit": "cover" },
+      "children": []
+    },
+    {
+      "name": "Header", "type": "panel", "id": "ed_header",
+      "rect": { "anchorMin": [0,1], "anchorMax": [1,1], "pivot": [0.5,1], "pos": [0,-24], "size": [0,108] },
+      "style": { "color": "rgba(255,248,228,0.92)", "sprite": "round", "raycast": false, "shadow": true },
+      "children": [
+        {
+          "name": "Title", "type": "text", "id": "ed_title",
+          "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-18], "size": [640,42] },
+          "text": { "content": "关卡编辑器", "fontSize": 32, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "children": []
+        },
+        {
+          "name": "BtnBack", "type": "button", "id": "ed_btn_back",
+          "rect": { "anchorMin": [0,1], "anchorMax": [0,1], "pivot": [0,1], "pos": [20,-22], "size": [120,64] },
+          "text": { "content": "返回", "fontSize": 26, "color": "#6B5B45", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+          "style": { "color": "#F5EDD8", "sprite": "round", "raycast": true, "shadow": true },
+          "children": []
+        },
+        {
+          "name": "BtnSave", "type": "button", "id": "ed_btn_save",
+          "rect": { "anchorMin": [1,1], "anchorMax": [1,1], "pivot": [1,1], "pos": [-20,-22], "size": [120,64] },
+          "text": { "content": "保存", "fontSize": 26, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true },
+          "children": []
+        },
+        {
+          "name": "ModeToggle", "type": "panel", "id": "ed_mode",
+          "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-72], "size": [340,32] },
+          "style": { "color": "#E8B931", "sprite": "none", "raycast": false },
+          "children": [
+            {
+              "name": "BtnModeClassic", "type": "button", "id": "ed_mode_classic",
+              "rect": { "anchorMin": [0,0], "anchorMax": [0.5,1], "pivot": [0.5,0.5], "pos": [0,0], "size": [-4,0] },
+              "text": { "content": "经典", "fontSize": 22, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+              "style": { "color": "#FFC857", "sprite": "round", "raycast": true },
+              "children": []
+            },
+            {
+              "name": "BtnModeExtended", "type": "button", "id": "ed_mode_extended",
+              "rect": { "anchorMin": [0.5,0], "anchorMax": [1,1], "pivot": [0.5,0.5], "pos": [0,0], "size": [-4,0] },
+              "text": { "content": "拓展", "fontSize": 22, "color": "#6B5B45", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+              "style": { "color": "#F5EDD8", "sprite": "round", "raycast": true },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Toolbar", "type": "panel", "id": "ed_toolbar",
+      "rect": { "anchorMin": [0,1], "anchorMax": [1,1], "pivot": [0.5,1], "pos": [0,-148], "size": [0,108] },
+      "style": { "color": "rgba(255,248,228,0.88)", "sprite": "round", "raycast": false, "shadow": true },
+      "children": [
+        { "name": "ToolWall", "type": "button", "id": "ed_tool_wall",
+          "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [-336,0], "size": [96,96] },
+          "text": { "content": "墙", "fontSize": 28, "color": "#FFF6E0", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#5C5C66", "sprite": "round", "raycast": true }, "children": [] },
+        { "name": "ToolPlayer", "type": "button", "id": "ed_tool_player",
+          "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [-224,0], "size": [96,96] },
+          "text": { "content": "玩家", "fontSize": 22, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#80C75A", "sprite": "round", "raycast": true }, "children": [] },
+        { "name": "ToolEnemy", "type": "button", "id": "ed_tool_enemy",
+          "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [-112,0], "size": [96,96] },
+          "text": { "content": "敌人", "fontSize": 22, "color": "#FFF6E0", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#A34866", "sprite": "round", "raycast": true }, "children": [] },
+        { "name": "ToolBox", "type": "button", "id": "ed_tool_box",
+          "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [0,0], "size": [96,96] },
+          "text": { "content": "箱子", "fontSize": 22, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#A67042", "sprite": "round", "raycast": true }, "children": [] },
+        { "name": "ToolGoal", "type": "button", "id": "ed_tool_goal",
+          "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [112,0], "size": [96,96] },
+          "text": { "content": "终点", "fontSize": 22, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#E8B931", "sprite": "round", "raycast": true }, "children": [] },
+        { "name": "ToolObstacle", "type": "button", "id": "ed_tool_obstacle",
+          "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [224,0], "size": [96,96] },
+          "text": { "content": "障碍", "fontSize": 22, "color": "#FFF6E0", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#5C4133", "sprite": "round", "raycast": true }, "children": [] },
+        { "name": "ToolErase", "type": "button", "id": "ed_tool_erase",
+          "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [336,0], "size": [96,96] },
+          "text": { "content": "橡皮", "fontSize": 22, "color": "#6B5B45", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#EFE9DC", "sprite": "round", "raycast": true }, "children": [] }
+      ]
+    },
+    {
+      "name": "GridContainer", "type": "panel", "id": "ed_grid",
+      "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [0,-10], "size": [640,640] },
+      "style": { "color": "#E8D9B4", "sprite": "none", "raycast": true },
+      "children": []
+    },
+    {
+      "name": "Footer", "type": "panel", "id": "ed_footer",
+      "rect": { "anchorMin": [0,0], "anchorMax": [1,0], "pivot": [0.5,0], "pos": [0,80], "size": [0,160] },
+      "style": { "color": "rgba(255,248,228,0.92)", "sprite": "round", "raycast": false, "shadow": true },
+      "children": [
+        {
+          "name": "StatusText", "type": "text", "id": "ed_status",
+          "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-16], "size": [600,32] },
+          "text": { "content": "就绪", "fontSize": 22, "color": "#6B5B45", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+          "children": []
+        },
+        {
+          "name": "SizeLabel", "type": "text", "id": "ed_size_lbl",
+          "rect": { "anchorMin": [0,0.5], "anchorMax": [0,0.5], "pivot": [0,0.5], "pos": [32,0], "size": [160,32] },
+          "text": { "content": "尺寸 16 × 12", "fontSize": 22, "color": "#412402", "align": "middle-left", "bold": true, "lineSpacing": 1 },
+          "children": []
+        },
+        {
+          "name": "BtnWidth", "type": "button", "id": "ed_w",
+          "rect": { "anchorMin": [0,0.5], "anchorMax": [0,0.5], "pivot": [0,0.5], "pos": [204,0], "size": [56,56] },
+          "text": { "content": "+", "fontSize": 30, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#FFC857", "sprite": "round", "raycast": true }, "children": [] },
+        {
+          "name": "BtnHeight", "type": "button", "id": "ed_h",
+          "rect": { "anchorMin": [0,0.5], "anchorMax": [0,0.5], "pivot": [0,0.5], "pos": [276,0], "size": [56,56] },
+          "text": { "content": "+", "fontSize": 30, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#FFC857", "sprite": "round", "raycast": true }, "children": [] },
+        {
+          "name": "BtnUndo", "type": "button", "id": "ed_undo",
+          "rect": { "anchorMin": [0,0], "anchorMax": [0,0], "pivot": [0,0], "pos": [32,16], "size": [120,64] },
+          "text": { "content": "撤销", "fontSize": 24, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true }, "children": [] },
+        {
+          "name": "BtnValidate", "type": "button", "id": "ed_validate",
+          "rect": { "anchorMin": [0.5,0], "anchorMax": [0.5,0], "pivot": [0.5,0], "pos": [0,16], "size": [180,64] },
+          "text": { "content": "检测是否有解", "fontSize": 22, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true }, "children": [] },
+        {
+          "name": "BtnNew", "type": "button", "id": "ed_new",
+          "rect": { "anchorMin": [1,0], "anchorMax": [1,0], "pivot": [1,0], "pos": [-32,16], "size": [120,64] },
+          "text": { "content": "新建", "fontSize": 24, "color": "#6B5B45", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+          "style": { "color": "#F5EDD8", "sprite": "round", "raycast": true, "shadow": true }, "children": [] }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+    "name": "Sokoban.Tests.EditMode",
+    "rootNamespace": "Sokoban.Tests",
+    "references": [
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "Sokoban.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "overrideReferences": true
+}

@@ -1,0 +1,3491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UI Builder — 策划排版 × 美术装饰 → Unity 一键导入</title>
+<!-- 现成前端包：Bootstrap 5.3 暗色主题（CDN）。离线场景可下载到本地替换 href -->
+<link href="bootstrap.min.css" rel="stylesheet">
+<style>
+  :root {
+    --accent: #ff7a5c; --accent2: #4ea1ff;
+    --chrome-bg: #1a1d24;
+    --chrome-border: #2c313b;
+    --tree-item-hover: #262b35;
+    --tree-item-selected: #31405a;
+    --tree-text: #d5d9e0;
+    --tree-muted: #8b93a1;
+    --prop-bg: #262b35;
+    --canvas-chrome: #1c1e24;
+    --label-color: #b9bfca;
+    --modal-bg: #101218;
+    --modal-text: #c8d3e0;
+    --modal-tip: #9aa3b2;
+  }
+  [data-bs-theme="light"] {
+    --chrome-bg: #ffffff;
+    --chrome-border: #dee2e6;
+    --tree-item-hover: #f1f3f5;
+    --tree-item-selected: #cfe2ff;
+    --tree-text: #212529;
+    --tree-muted: #868e96;
+    --prop-bg: #f8f9fa;
+    --canvas-chrome: #e9ecef;
+    --label-color: #6c757d;
+    --modal-bg: #f8f9fa;
+    --modal-text: #212529;
+    --modal-tip: #6c757d;
+  }
+  .navbar.appbar { background: var(--chrome-bg); color: var(--tree-text); border-color: var(--chrome-border) !important; }
+  .navbar.appbar .nav-link { color: var(--tree-text); }
+  .navbar.appbar .nav-link.active { background: var(--accent); color: #fff; }
+  html,body { height:100%; }
+  body { display:flex; flex-direction:column; overflow:hidden; font-size:13px; }
+  .navbar { flex-shrink:0; }
+  .logo b { color: var(--accent); }
+  .navbar .nav-pills .nav-link.active { background:var(--accent); }
+  /* 多文档标签栏（类 Photoshop） */
+  .docbar { display:flex; align-items:center; gap:6px; padding:6px 10px; background:var(--chrome-bg); border-bottom:1px solid var(--chrome-border); flex-shrink:0; }
+  .doc-tabs { display:flex; gap:6px; align-items:center; overflow-x:auto; }
+  .doc-tab { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border:1px solid var(--chrome-border); border-radius:8px 8px 0 0; background:#1b1e25; color:var(--tree-text); font-size:13px; cursor:pointer; white-space:nowrap; user-select:none; }
+  .doc-tab:hover { background:#23272f; }
+  .doc-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .doc-tab .x { opacity:.55; font-weight:bold; margin-left:2px; }
+  .doc-tab .x:hover { opacity:1; color:#ff6b6b; }
+  .doc-add { padding:3px 10px; border:1px dashed var(--chrome-border); border-radius:8px; background:transparent; color:var(--tree-text); cursor:pointer; font-size:15px; line-height:1; }
+  .doc-add:hover { background:#23272f; }
+  .docbar-right { margin-left:auto; display:flex; align-items:center; gap:6px; }
+  .navbar .btn { font-size:13px; }
+  .main { flex:1; display:flex; min-height:0; }
+  .side { width:248px; min-width:160px; max-width:480px; flex:0 1 auto; background:var(--chrome-bg); border-right:1px solid var(--chrome-border); display:flex; flex-direction:column; min-height:0; }
+  .side.right { border-right:none; border-left:1px solid var(--chrome-border); width:280px; }
+  /* 可拖拽分隔条 */
+  .resizer { flex:0 0 6px; cursor:col-resize; background:transparent; position:relative; z-index:6; transition:background .12s; }
+  .resizer::after { content:""; position:absolute; top:0; bottom:0; left:50%; transform:translateX(-50%); width:2px; background:var(--chrome-border); }
+  .resizer:hover, .resizer.active { background:rgba(255,122,92,.15); }
+  .resizer:hover::after, .resizer.active::after { background:var(--accent); }
+  /* 右键上下文菜单 */
+  .ctx-menu { position:fixed; z-index:3000; background:var(--chrome-bg); border:1px solid var(--chrome-border); border-radius:9px; padding:5px; min-width:168px; box-shadow:0 12px 32px rgba(0,0,0,.55); font-size:13px; }
+  .ctx-item { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:7px 11px; border-radius:7px; cursor:pointer; color:var(--tree-text); white-space:nowrap; user-select:none; }
+  .ctx-item:hover { background:var(--tree-item-hover); }
+  .ctx-item.danger:hover { background:rgba(220,53,69,.2); color:#ff8a8a; }
+  .ctx-item .ar { opacity:.55; font-size:11px; }
+  .ctx-sep { height:1px; background:var(--chrome-border); margin:4px 2px; }
+  .ctx-item.has-sub { position:relative; }
+  .ctx-submenu { display:none; position:absolute; left:100%; top:-5px; margin-left:2px; background:var(--chrome-bg); border:1px solid var(--chrome-border); border-radius:9px; padding:5px; min-width:150px; box-shadow:0 12px 32px rgba(0,0,0,.55); }
+  .ctx-item.has-sub:hover > .ctx-submenu { display:block; }
+  .side-title {
+    font-size:11px; color:var(--tree-muted); text-transform:uppercase; letter-spacing:1.5px;
+    padding:10px 14px 6px; border-bottom:1px solid var(--chrome-border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0;
+  }
+  /* 节点树 */
+  .tree { flex:1; overflow:auto; padding:6px; }
+  .tree-item {
+    display:flex; align-items:center; gap:6px; padding:4px 8px; border-radius:6px;
+    cursor:pointer; user-select:none; white-space:nowrap; color:var(--tree-text);
+  }
+  .tree-item:hover { background:var(--tree-item-hover); }
+  .tree-item.selected { background:var(--tree-item-selected); outline:1px solid var(--accent2); }
+  .tree-item .caret { width:14px; flex-shrink:0; color:#8b93a1; text-align:center; font-size:10px; }
+  .tree-item .type-badge {
+    width:16px; height:16px; border-radius:4px; flex-shrink:0; display:inline-flex;
+    align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff;
+  }
+  .tb-panel { background:#8a745f; } .tb-button { background:var(--accent); }
+  .tb-text { background:var(--accent2); } .tb-image { background:#4ca877; }
+  .tb-canvas { background:#8b93a1; }
+  .tree-item .nm { overflow:hidden; text-overflow:ellipsis; }
+  .tree-item .tree-ops { margin-left:auto; display:inline-flex; gap:2px; opacity:0; transition:opacity .15s; flex-shrink:0; }
+  .tree-item:hover .tree-ops, .tree-item.selected .tree-ops { opacity:.65; }
+  .tree-item .tree-ops .tree-op { cursor:pointer; font-size:11px; padding:0 2px; border-radius:4px; }
+  .tree-item .tree-ops .tree-op:hover { background:rgba(127,127,127,.25); }
+  .tree-item .tree-ops .tree-op.on { opacity:1; }
+  .tree-item.locked .nm { opacity:.5; }
+  .tree-item.hidden-node .nm { opacity:.35; text-decoration:line-through; }
+  .node.locked { cursor:not-allowed; outline:1px dotted rgba(255,255,255,.25); }
+  /* 层级栏拖拽指示 */
+  .tree-item.dragging { opacity:.45; }
+  .tree-item.drop-before { box-shadow: inset 0 2px 0 0 var(--accent); }
+  .tree-item.drop-after { box-shadow: inset 0 -2px 0 0 var(--accent); }
+  .tree-item.drop-child { outline:1.5px dashed var(--accent); outline-offset:-2px; background:var(--tree-item-hover); }
+  /* 画布 */
+  .canvas-wrap {
+    position:relative;
+    flex:1; overflow:auto; display:flex; justify-content:center; align-items:flex-start;
+    padding:28px; background:
+      radial-gradient(circle, var(--canvas-chrome) 1px, transparent 1px) 0 0 / 22px 22px,
+      var(--canvas-chrome);
+  }
+  .canvas-box { position:relative; background:#26292f; box-shadow:0 10px 40px rgba(0,0,0,.6); border-radius:6px; flex-shrink:0; }
+  .canvas-box .cnv-label { position:absolute; top:-24px; left:0; color:#8b93a1; font-size:12px; }
+  .node { position:absolute; overflow:visible; user-select:none; }
+  .node [data-role="text"][contenteditable="true"] { user-select:text; cursor:text; outline:1px solid var(--accent); outline-offset:1px; border-radius:3px; }
+  .node.selected { outline:1px dashed var(--accent2); outline-offset:-1px; }
+  .node:hover:not(.selected) { outline:1px dashed rgba(78,161,255,.55); outline-offset:-1px; }
+  /* 选中节点的缩放手柄（美术模式/图片节点可用）：恒定屏幕尺寸，不随画布缩放 */
+  .resize-handle {
+    position:absolute; width:10px; height:10px; background:#fff; border:1px solid var(--accent);
+    border-radius:2px; z-index:7; box-shadow:0 0 0 1px rgba(0,0,0,.25);
+  }
+  .resize-handle:hover { background:var(--accent); }
+  /* 选中信息浮层（固定在画布右上角，不遮挡节点本身，保证拖拽手感） */
+  .sel-hud {
+    position:absolute; top:10px; right:10px; z-index:6; display:none;
+    background:rgba(18,20,26,.9); color:#7fc0ff; font-size:11px;
+    padding:4px 10px; border-radius:6px; pointer-events:none;
+    box-shadow:0 2px 10px rgba(0,0,0,.4); max-width:60%;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .sel-hud span { color:#8b93a1; }
+  /* 属性面板 */
+  .props { flex:1; overflow:auto; padding:10px 14px 30px; }
+  .prop-group { margin-bottom:14px; }
+  .pg-title { font-size:11px; color:var(--tree-muted); letter-spacing:1px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid var(--chrome-border); }
+  .node-meta { background:var(--prop-bg); border:1px solid var(--chrome-border); border-radius:8px; padding:10px 12px; margin-bottom:14px; }
+  .node-meta .nm { font-weight:700; font-size:14px; }
+  .node-meta .ty { color:var(--tree-muted); font-size:12px; margin-top:2px; }
+  .xy-row { display:flex; gap:8px; }
+  .xy-row .xy-cell { flex:1; }
+  .xy-row label { font-size:11px; color:var(--tree-muted); display:block; margin-bottom:2px; }
+  .form-control, .form-select { font-size:13px; padding:.28rem .5rem; }
+  .form-label { font-size:12px; margin-bottom:2px; color:var(--label-color); }
+  .form-check-input { margin-top:.25em; }
+  .code-area { font-family:Consolas,"SF Mono",monospace; font-size:12px; background:var(--modal-bg); color:var(--modal-text); }
+  .modal-tip { font-size:12px; color:var(--modal-tip); line-height:1.7; }
+  .modal-tip code { background:var(--prop-bg); padding:1px 5px; border-radius:4px; color:var(--accent2); }
+  ::-webkit-scrollbar { width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb { background:#3a4049; border-radius:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  .dropup-export { font-weight:600; }
+  /* ============ 预览模式（对齐 Unity 画布参考分辨率） ============ */
+  body.preview-mode #sideLeft,
+  body.preview-mode #sideRight { display:none; }
+  body.preview-mode #canvasWrap { background:#0e0f12; }
+  body.preview-mode #canvasBox { box-shadow:0 24px 70px rgba(0,0,0,.55); border-radius:26px; }
+  body.preview-mode .node.selected,
+  body.preview-mode .node:hover { outline:none !important; }
+  .preview-hud {
+    position:absolute; left:50%; bottom:14px; transform:translateX(-50%);
+    z-index:8; background:rgba(18,20,26,.88); color:#9fb0c4; font-size:12px;
+    padding:6px 14px; border-radius:20px; pointer-events:none; white-space:nowrap;
+    box-shadow:0 2px 10px rgba(0,0,0,.4); display:none;
+  }
+  body.preview-mode .preview-hud { display:block; }
+  .preview-hud b { color:#7fc0ff; }
+  .preview-guides { position:absolute; inset:0; pointer-events:none; z-index:5; display:none; }
+  body.preview-mode.show-guides .preview-guides { display:block; }
+  .preview-guides .v, .preview-guides .h { position:absolute; background:rgba(127,192,255,.35); }
+  .preview-guides .v { left:50%; top:0; bottom:0; width:1px; }
+  .preview-guides .h { top:50%; left:0; right:0; height:1px; }
+  .preview-guides .safe { position:absolute; inset:5%; border:1px dashed rgba(255,255,255,.22); border-radius:18px; }
+  body.preview-mode #btnPreview { background:var(--accent); color:#06223f; border-color:var(--accent); }
+  /* 导航栏分组分隔线 */
+  nav.appbar .vr { align-self:stretch; opacity:.35; margin:1px 2px; }
+
+  /* ============ 差异视图 ============ */
+  .diff-summary { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .diff-chip { padding:4px 12px; border-radius:20px; font-size:13px; font-weight:600; }
+  .diff-chip.add { background:rgba(46,160,67,.18); color:#5fd07a; }
+  .diff-chip.del { background:rgba(220,53,69,.18); color:#ff7a8a; }
+  .diff-chip.chg { background:rgba(240,170,40,.18); color:#ffce6a; }
+  .diff-group-title { font-size:12px; letter-spacing:1px; color:var(--tree-muted); margin:14px 0 6px; }
+  .diff-item { border:1px solid var(--chrome-border); border-radius:8px; padding:8px 10px; margin-bottom:6px; background:var(--prop-bg); }
+  .diff-item .nm { font-weight:700; }
+  .diff-item .path { color:var(--tree-muted); font-size:11px; }
+  .diff-item .ty { font-size:11px; color:#9fb0c4; }
+  .diff-item.add { border-left:3px solid #5fd07a; }
+  .diff-item.del { border-left:3px solid #ff7a8a; }
+  .diff-item.chg { border-left:3px solid #ffce6a; }
+  .diff-field { font-size:12px; margin-top:4px; }
+  .diff-field .old { color:#ff7a8a; text-decoration:line-through; }
+  .diff-field .new { color:#5fd07a; }
+  .diff-field .arrow { color:var(--tree-muted); margin:0 6px; }
+  .diff-empty { color:var(--tree-muted); padding:20px; text-align:center; }
+
+  /* ---------- AI 排版助手 ---------- */
+  #btnAI { background:linear-gradient(100deg,#7c5cff,#4ea1ff); border:none; color:#fff; font-weight:600; }
+  #btnAI:hover { filter:brightness(1.1); color:#fff; }
+  .ai-chip { display:inline-block; padding:4px 10px; margin:0 6px 6px 0; border:1px solid var(--chrome-border);
+             border-radius:999px; font-size:12px; color:var(--tree-text); background:var(--prop-bg); cursor:pointer; user-select:none; }
+  .ai-chip:hover { border-color:var(--accent2); color:var(--accent2); }
+  .ai-cfg { background:var(--prop-bg); border:1px solid var(--chrome-border); border-radius:9px; padding:10px 12px; }
+  .ai-cfg label { font-size:11px; color:var(--label-color); margin-bottom:2px; }
+  .ai-log { max-height:220px; overflow:auto; background:var(--prop-bg); border:1px solid var(--chrome-border);
+            border-radius:9px; padding:8px 10px; font-size:12px; line-height:1.75; }
+  .ai-log div { color:var(--tree-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ai-log div.warn { color:#e3b341; }
+  .ai-log div.err { color:#ff8a8a; }
+  .ai-badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600;
+              background:rgba(124,92,255,.18); color:#a892ff; border:1px solid rgba(124,92,255,.4); }
+  .ai-badge.local { background:rgba(78,161,255,.15); color:#78b6ff; border-color:rgba(78,161,255,.4); }
+  .ai-summary { font-size:12.5px; color:var(--modal-text); background:var(--prop-bg); border-left:3px solid var(--accent2);
+                border-radius:0 8px 8px 0; padding:8px 12px; margin:8px 0; }
+  .ai-spec { font-family:ui-monospace,Consolas,monospace; font-size:11.5px; color:var(--modal-tip);
+             white-space:pre-wrap; max-height:260px; overflow:auto; background:var(--prop-bg);
+             border:1px solid var(--chrome-border); border-radius:8px; padding:10px; }
+  .ai-busy { display:inline-block; width:13px; height:13px; border:2px solid rgba(255,255,255,.35);
+             border-top-color:#fff; border-radius:50%; animation:aiSpin .7s linear infinite; vertical-align:-2px; }
+  @keyframes aiSpin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body data-bs-theme="dark">
+
+<!-- ==================== 顶部导航 ==================== -->
+<nav class="navbar appbar border-bottom py-2 px-3">
+  <div class="d-flex align-items-center gap-3 flex-wrap w-100">
+    <span class="navbar-brand mb-0 h6 me-1 logo">UI <b>Builder</b></span>
+    <ul class="nav nav-pills nav-sm" id="modeTabs">
+      <li class="nav-item"><a class="nav-link active" href="#" data-mode="layout">📐 策划 · 排版</a></li>
+      <li class="nav-item"><a class="nav-link" href="#" data-mode="decor">🎨 美术 · 装饰</a></li>
+    </ul>
+    <span class="text-secondary small" id="modeHint" style="font-size:12px"></span>
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">屏幕比例 ▾</button>
+      <ul class="dropdown-menu dropdown-menu-end" id="ratioMenu">
+        <li><a class="dropdown-item" href="#" data-wh="720,1280">9:16 · 720×1280</a></li>
+        <li><a class="dropdown-item" href="#" data-wh="720,1560">9:19.5 · 720×1560</a></li>
+        <li><a class="dropdown-item" href="#" data-wh="720,1680">9:21 · 720×1680</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#" data-wh="960,640">16:9 横屏 · 960×640</a></li>
+      </ul>
+    </div>
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">📐 模板</button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><h6 class="dropdown-header">选择起始排版</h6></li>
+        <li><a class="dropdown-item" href="#" data-tpl="portrait">竖屏游戏主页</a></li>
+        <li><a class="dropdown-item" href="#" data-tpl="landscape">横屏游戏主页</a></li>
+        <li><a class="dropdown-item" href="#" data-tpl="blank">空画布</a></li>
+      </ul>
+    </div>
+    <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+      <!-- 创建 -->
+      <button class="btn btn-sm" id="btnAI" title="AI 排版：用一句话描述界面，AI 调用放置元素 API 自动摆好 (Ctrl+K)">✨ AI 排版</button>
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">＋ 添加</button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="#" data-add="panel">+ 面板</a></li>
+          <li><a class="dropdown-item" href="#" data-add="button">+ 按钮</a></li>
+          <li><a class="dropdown-item" href="#" data-add="text">+ 文本</a></li>
+          <li><a class="dropdown-item" href="#" data-add="image">+ 图片</a></li>
+        </ul>
+      </div>
+      <button class="btn btn-outline-secondary btn-sm" id="btnUndo" title="撤销 (Ctrl+Z)" disabled>↩ 撤销</button>
+      <button class="btn btn-outline-secondary btn-sm" id="btnRedo" title="重做 (Ctrl+Y)" disabled>↪ 重做</button>
+      <button class="btn btn-outline-secondary btn-sm" id="btnCopy" title="复制选中节点 (Ctrl+C)">⧉ 复制</button>
+      <button class="btn btn-outline-secondary btn-sm" id="btnPaste" title="粘贴节点 (Ctrl+V)">📋 粘贴</button>
+      <span class="vr"></span>
+      <!-- 视图 -->
+      <button class="btn btn-outline-secondary btn-sm" id="btnPreview" title="预览（对齐 Unity 画布参考分辨率）">👁 预览</button>
+      <button class="btn btn-outline-secondary btn-sm" id="btnDiff" title="差异视图：对比 Unity 回写快照">⚖ 对比</button>
+      <button class="btn btn-outline-secondary btn-sm" id="btnTheme" title="切换白天 / 夜间">🌙 夜间</button>
+      <button class="btn btn-outline-secondary btn-sm" id="btnHotkeys" title="快捷键一览 (?)">⌨ 快捷键</button>
+      <span class="vr"></span>
+      <!-- 文件 -->
+      <button class="btn btn-outline-info btn-sm" id="btnImport">导入</button>
+      <div class="dropdown">
+        <button class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown">导出 ▾</button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><h6 class="dropdown-header">策划包 → 发给美术</h6></li>
+          <li><a class="dropdown-item" href="#" id="btnExportLayout">📐 策划包（仅布局+文本）</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><h6 class="dropdown-header">程序 → 导入 Unity</h6></li>
+          <li><a class="dropdown-item" href="#" id="btnExportDecor">🎨 美术包（视觉+位置覆盖）</a></li>
+          <li><a class="dropdown-item" href="#" id="btnExportFull">🚀 完整包（推荐）</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="#" id="btnExportPack">📦 整包（UI + 素材，给程序）</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ==================== 多文档标签栏（类 Photoshop） ==================== -->
+<div class="docbar" id="docBar">
+  <div class="doc-tabs" id="docTabs"></div>
+  <button class="doc-add" id="btnDocAdd" title="新建一套 UI（Ctrl+Shift+N）">＋</button>
+  <div class="docbar-right">
+    <button class="btn btn-outline-secondary btn-sm" id="btnDocOpen" title="打开 .uib / .json 文件">📁 打开</button>
+    <button class="btn btn-outline-secondary btn-sm" id="btnDocSave" title="保存当前 UI 为文件">💾 保存</button>
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">⋯</button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="#" id="btnDocSaveAs">另存为…</a></li>
+        <li><a class="dropdown-item" href="#" id="btnDocRename">重命名当前</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item text-danger" href="#" id="btnDocClose">关闭当前</a></li>
+      </ul>
+    </div>
+  </div>
+  <input type="file" id="docFileInput" accept=".uib,.json" style="display:none">
+</div>
+
+<!-- ==================== 主体三栏 ==================== -->
+<div class="main">
+  <!-- 左：节点树 -->
+  <div class="side" id="sideLeft">
+    <div class="side-title">层级 <span id="nodeCount" style="font-size:11px;text-transform:none"></span></div>
+    <div class="tree" id="tree"></div>
+  </div>
+  <div class="resizer" id="resLeft" title="拖拽调整层级栏宽度"></div>
+
+  <!-- 中：画布 -->
+  <div class="canvas-wrap" id="canvasWrap">
+    <div class="canvas-box" id="canvasBox">
+      <div class="cnv-label" id="cnvLabel"></div>
+    </div>
+    <div class="sel-hud" id="selHud"></div>
+    <div class="preview-hud" id="previewHud"></div>
+  </div>
+
+  <div class="resizer" id="resRight" title="拖拽调整属性栏宽度"></div>
+  <!-- 右：属性 -->
+  <div class="side right" id="sideRight">
+    <div class="side-title">属性</div>
+    <div class="props" id="props"></div>
+  </div>
+</div>
+
+<!-- ==================== 导出/导入模态（Bootstrap Modal） ==================== -->
+<div class="modal fade" id="jsonModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitle">导出</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-tip mb-2" id="modalTip"></div>
+        <textarea class="form-control code-area" id="modalCode" rows="12" spellcheck="false" placeholder="…"></textarea>
+        <div class="modal-tip mt-2" id="modalExtra"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary btn-sm" id="modalFileBtn">📁 选择文件</button>
+        <button class="btn btn-outline-secondary btn-sm" id="modalCopy">复制</button>
+        <button class="btn btn-outline-secondary btn-sm" id="modalDownload">下载 .json</button>
+        <button class="btn btn-primary btn-sm" id="modalAction">关闭</button>
+      </div>
+      <input type="file" id="fileInput" accept=".json,application/json" style="display:none">
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 差异视图模态 ==================== -->
+<div class="modal fade" id="diffModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">⚖ 差异视图：网页当前 ↔ Unity 快照</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
+          <button class="btn btn-outline-secondary btn-sm" id="diffLoadBtn">📁 载入 Unity 快照 (.json)</button>
+          <span class="text-secondary small" id="diffBaselineName">未载入基线</span>
+          <span class="ms-auto text-secondary small">基线通常是 Unity「Export to JSON（回写网页）」生成的文件</span>
+        </div>
+        <div class="diff-summary" id="diffSummary"></div>
+        <div id="diffBody"><div class="diff-empty">载入一个 Unity 回写 JSON（或任意 ui-builder JSON）作为基线，即可看到网页相对它的增删改。</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<input type="file" id="diffFile" accept=".json,application/json" style="display:none">
+
+<!-- ==================== 快捷键帮助模态 ==================== -->
+<div class="modal fade" id="hotkeyModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">⌨ 快捷键一览（参照 Figma / Unity / PS 习惯）</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <table class="table table-sm align-middle">
+          <thead><tr><th style="width:42%">快捷键</th><th>功能</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>Ctrl/⌘ + Z</kbd> / <kbd>Ctrl/⌘ + Y</kbd></td><td>撤销 / 重做（支持 100 步）</td></tr>
+            <tr><td><kbd>Ctrl/⌘ + C</kbd> / <kbd>Ctrl/⌘ + V</kbd></td><td>复制 / 粘贴（支持多选批量）</td></tr>
+            <tr><td><kbd>Ctrl/⌘ + Shift + V</kbd></td><td>粘贴到原位置（不带偏移）</td></tr>
+            <tr><td><kbd>Ctrl/⌘ + D</kbd></td><td>复制并粘贴（duplicate，Unity/Figma 同款）</td></tr>
+            <tr><td><kbd>Ctrl/⌘ + A</kbd></td><td>全选所有节点</td></tr>
+            <tr><td><kbd>Ctrl/⌘ + 点击</kbd></td><td>多选 / 切换选择（画布与层级均支持）</td></tr>
+            <tr><td><kbd>Ctrl/⌘ + G</kbd> / <kbd>Ctrl/⌘ + Shift + G</kbd></td><td>组合 / 取消组合（生成 Panel Group）</td></tr>
+            <tr><td><kbd>Alt + ← ↑ → ↓</kbd></td><td>对齐：左 / 顶 / 右 / 底（多选，同父级）</td></tr>
+            <tr><td><kbd>Alt + Shift + ← / ↑</kbd></td><td>水平居中 / 垂直居中</td></tr>
+            <tr><td><kbd>Ctrl/⌘ + Alt + C</kbd> / <kbd>Ctrl/⌘ + Alt + V</kbd></td><td>复制样式 / 粘贴样式（颜色·形状·文本·图片）</td></tr>
+            <tr><td><kbd>Ctrl/⌘ + Shift + L</kbd></td><td>锁定 / 解锁（锁定后画布不可拖动）</td></tr>
+            <tr><td><kbd>Ctrl/⌘ + Shift + H</kbd></td><td>隐藏 / 显示（导出时保留标记，Unity 侧 SetActive 对应）</td></tr>
+            <tr><td><kbd>Ctrl/⌘ + ]</kbd> / <kbd>Ctrl/⌘ + [</kbd></td><td>上移一层 / 下移一层（图层顺序）</td></tr>
+            <tr><td><kbd>Delete</kbd> / <kbd>Backspace</kbd></td><td>删除选中（多选批量）</td></tr>
+            <tr><td><kbd>方向键</kbd> / <kbd>Shift + 方向键</kbd></td><td>微调位置 1px / 10px（多选整体移动）</td></tr>
+            <tr><td><kbd>Alt + 拖拽节点</kbd></td><td>快速复制（Figma / PS 同款）</td></tr>
+            <tr><td><kbd>Ctrl/⌘ + K</kbd></td><td>打开 ✨ AI 排版（模态内 <kbd>Ctrl + Enter</kbd> 直接生成）</td></tr>
+            <tr><td><kbd>Ctrl/⌘ + F</kbd></td><td>按名称查找节点</td></tr>
+            <tr><td><kbd>F</kbd></td><td>聚焦选中节点（展开其在层级中的路径）</td></tr>
+            <tr><td><kbd>F2</kbd></td><td>重命名节点</td></tr>
+            <tr><td><kbd>Ctrl/⌘ + S</kbd></td><td>导出完整包（程序可直接导入 Unity）</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>取消选中 / 关闭菜单</td></tr>
+          </tbody>
+        </table>
+        <div class="modal-tip">提示：
+          <b>对齐</b> = 以所有选中节点（多选）的<u>整体包围盒</u>为基准彼此对齐（左/右/顶/底/居中），仅限同一父级；可点属性面板「已选 N 个节点」里的对齐按钮，或按 Alt+方向键。
+          <br>属性面板的「高级选项」里可精确调整锚点；<b>组合</b>（Ctrl+G）不会改变节点在世界坐标中的位置。</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary btn-sm" data-bs-dismiss="modal">知道了</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 通用输入模态（F2 重命名 / Ctrl+F 查找等） ==================== -->
+<div class="modal fade" id="promptModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title" id="promptTitle">输入</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" class="form-control form-control-sm" id="promptInput" placeholder="">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+        <button class="btn btn-primary btn-sm" id="promptOk">确定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== AI 排版助手模态 ==================== -->
+<div class="modal fade" id="aiModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">✨ AI 排版 · 自然语言 → 自动摆 UI</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-tip mb-2">
+          用一句话描述你要的界面，AI 会调用下面的<b>「放置元素 API」</b>把节点摆好。生成结果可继续手工微调，
+          <kbd>Ctrl+Z</kbd> 一次撤销整轮生成。
+        </div>
+
+        <textarea class="form-control" id="aiPrompt" rows="3" spellcheck="false"
+          placeholder="例：做一个竖屏主菜单，标题叫「一刀千味」，中间一个开始游戏大按钮，底部一排商店 / 排行榜 / 设置，左上角显示金币"></textarea>
+
+        <div class="mt-2">
+          <span class="ai-chip" data-ai-ex="做一个竖屏休闲游戏主菜单，标题「一刀千味」，中间开始游戏大按钮，底部一排商店 / 排行榜 / 设置，左上角金币条">🏠 主菜单</span>
+          <span class="ai-chip" data-ai-ex="做一个通关结算弹窗：标题「关卡完成」，三颗星，本局得分与金币奖励两行数据，底部再来一局 / 返回主页两个按钮">🎉 结算弹窗</span>
+          <span class="ai-chip" data-ai-ex="做一个设置面板弹窗：音乐、音效、震动三行开关，语言一行，底部关闭按钮">⚙ 设置面板</span>
+          <span class="ai-chip" data-ai-ex="做一个商店页：顶部标题和金币余额，中间 2 列 3 行的商品卡片网格，底部购买按钮">🛒 商店页</span>
+          <span class="ai-chip" data-ai-ex="做一个关卡选择页：顶部返回按钮和标题，中间 3 列 3 行关卡按钮网格，底部页码">🗺 选关页</span>
+          <span class="ai-chip" data-ai-ex="做一个局内 HUD：左上角血条，右上角暂停按钮，顶部中间分数，底部中间技能按钮一排">🎮 局内 HUD</span>
+        </div>
+
+        <div class="d-flex align-items-center gap-3 flex-wrap mt-3">
+          <div class="form-check form-check-inline mb-0">
+            <input class="form-check-input" type="radio" name="aiScope" id="aiScopeNew" checked>
+            <label class="form-check-label" for="aiScopeNew" style="font-size:12.5px">新建整屏（清空画布）</label>
+          </div>
+          <div class="form-check form-check-inline mb-0">
+            <input class="form-check-input" type="radio" name="aiScope" id="aiScopeAppend">
+            <label class="form-check-label" for="aiScopeAppend" style="font-size:12.5px">在现有基础上追加 / 修改</label>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm ms-auto" id="aiToggleCfg">⚙ AI 接口设置</button>
+          <button class="btn btn-outline-secondary btn-sm" id="aiToggleSpec">📖 API 说明</button>
+        </div>
+
+        <!-- AI 接口设置 -->
+        <div class="ai-cfg mt-2" id="aiCfgBox" style="display:none">
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label>服务商预设</label>
+              <select class="form-select form-select-sm" id="aiPreset">
+                <option value="deepseek">DeepSeek</option>
+                <option value="openai">OpenAI</option>
+                <option value="moonshot">Moonshot / Kimi</option>
+                <option value="zhipu">智谱 GLM</option>
+                <option value="dashscope">阿里百炼 / 通义</option>
+                <option value="ollama">本地 Ollama</option>
+                <option value="custom">自定义</option>
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label>接口地址（OpenAI 兼容 /chat/completions）</label>
+              <input type="text" class="form-control form-control-sm" id="aiBase" placeholder="https://api.deepseek.com/v1/chat/completions">
+            </div>
+            <div class="col-md-4">
+              <label>模型</label>
+              <input type="text" class="form-control form-control-sm" id="aiModel" placeholder="deepseek-chat">
+            </div>
+            <div class="col-md-5">
+              <label>API Key（仅存在本机 localStorage）</label>
+              <input type="password" class="form-control form-control-sm" id="aiKey" placeholder="sk-...">
+            </div>
+            <div class="col-md-3">
+              <label>随机性 temperature</label>
+              <input type="number" class="form-control form-control-sm" id="aiTemp" step="0.1" min="0" max="1" placeholder="0.3">
+            </div>
+          </div>
+          <div class="form-check form-switch mt-2">
+            <input class="form-check-input" type="checkbox" id="aiUseProxy">
+            <label class="form-check-label" for="aiUseProxy" style="font-size:12.5px">
+              本地代理模式（页面被 CSP 拦截直连时使用：先在终端运行 <code>node ai-proxy.js</code>，请求会走
+              <code>127.0.0.1:8788</code> 转发，绕过白名单限制）
+            </label>
+          </div>
+          <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+            <button class="btn btn-primary btn-sm" id="aiSaveCfg">保存设置</button>
+            <button class="btn btn-outline-secondary btn-sm" id="aiClearCfg">清除 Key</button>
+            <button class="btn btn-outline-info btn-sm" id="aiTestConn" title="用当前表单里的地址 / 模型 / Key 发一个最小请求，验证能否连通（不必先保存）">🔌 测试连接</button>
+            <span class="text-secondary" style="font-size:11.5px">
+              未配置 Key 也能用 —— 会自动走内置<b>离线规则引擎</b>（无需联网，适合演示）。
+            </span>
+            <span id="aiTestMsg" class="ms-1" style="font-size:11.5px"></span>
+          </div>
+        </div>
+
+        <!-- API 说明 -->
+        <div class="mt-2" id="aiSpecBox" style="display:none">
+          <div class="ai-spec" id="aiSpecText"></div>
+        </div>
+
+        <div id="aiResult" class="mt-3"></div>
+      </div>
+      <div class="modal-footer">
+        <span class="text-secondary me-auto" style="font-size:11.5px" id="aiStatus"></span>
+        <button class="btn btn-outline-secondary btn-sm" id="aiRunLocal" title="不调用外部 API，用内置规则引擎生成">🧪 离线生成</button>
+        <button class="btn btn-primary btn-sm" id="aiRun">✨ 生成并排版</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="bootstrap.bundle.min.js"></script>
+<script>
+"use strict";
+/* ================================================================
+ * UI Builder v2 —— Bootstrap 5 暗色主题
+ * 渲染引擎对齐 Unity uGUI RectTransform 锚点公式，所见即所得。
+ * v2 新增：美术素材替换（style.bgImage）、美术位置微调（可拖动/改 X/Y、
+ *          decoration 包输出 layoutOverride 增量覆盖）。
+ * ================================================================ */
+
+/* ---------------- 工具 ---------------- */
+const $ = id => document.getElementById(id);
+function uid() { return "n" + Math.random().toString(36).slice(2, 8); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+function hexToRgba(hex, a) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+function rgbaToHex(rgba) {
+  const m = /rgba?\((\d+),(\d+),(\d+)(?:,([\d.]+))?\)/.exec(String(rgba));
+  if (!m) return "#888888";
+  const r = (+m[1]).toString(16).padStart(2,"0");
+  const g = (+m[2]).toString(16).padStart(2,"0");
+  const b = (+m[3]).toString(16).padStart(2,"0");
+  return "#" + r + g + b;
+}
+function alphaOf(rgba) {
+  const m = /rgba?\(\d+,\d+,\d+(?:,([\d.]+))?\)/.exec(String(rgba));
+  return m && m[1] !== undefined ? clamp(+m[1], 0, 1) : 1;
+}
+
+/* ---------------- 数据模型 ---------------- */
+function makeNode(name, type, opts = {}) {
+  return {
+    id: uid(), name, type,
+    rect: {
+      anchorMin: opts.anchorMin || [0, 0.5],
+      anchorMax: opts.anchorMax || [0, 0.5],
+      pivot:     opts.pivot || [0, 0.5],
+      pos:       opts.pos || [0, 0],
+      size:      opts.size || [160, 40],
+    },
+    style: {
+      color:   opts.color || (type === "button" ? "#ff7a5c" : (type === "panel" || type === "image") ? "#3b4456" : "#4a4f5c"),
+      sprite:  opts.sprite || (type === "button" ? "pill" : "round"),
+      shadow:  opts.shadow ?? (type === "button" ? true : false),
+      raycast: opts.raycast ?? false,
+      bgImage: opts.bgImage || "",   // 美术素材替换（URL 或资源名）
+      fit:     opts.fit || "cover",  // cover | contain
+    },
+    text: (type === "text" || type === "button") ? {
+      content: opts.text || (type === "text" ? "文本" : "按钮"),
+      fontSize: opts.fontSize || (type === "button" ? 20 : 16),
+      color: opts.textColor || "#ffffff",
+      align: opts.align || "middle-center",
+      bold: opts.bold ?? (type === "button"),
+      lineSpacing: 1.25,
+    } : null,
+    image: type === "image" ? { src: opts.src || "", fit: "contain", sprite: "none" } : null,
+    onClick: opts.onClick || null,   // 按钮 onClick 持久监听（Unity 回写后透传，不在此编辑）
+    children: [],
+  };
+}
+
+// 起始模板：竖屏休闲游戏主页（即默认示例场景）
+function buildPortrait() {
+  const bg = makeNode("Bg", "panel", { anchorMin:[0,0], anchorMax:[1,1], pivot:[0.5,0.5], pos:[0,0], size:[0,0], color:"#2b2f3a", sprite:"none" });
+  const coins = makeNode("Coins", "panel", { anchorMin:[0,1], anchorMax:[0,1], pivot:[0,1], pos:[18,-18], size:[156,46], color:"rgba(255,255,255,0.14)", sprite:"pill" });
+  coins.children.push(makeNode("CoinText", "text", { anchorMin:[0,0], anchorMax:[1,1], pivot:[0.5,0.5], pos:[0,0], size:[-16,0], text:"💰 1280", fontSize:18, textColor:"#ffe08a", align:"middle-center", bold:true }));
+  const settings = makeNode("SettingsBtn", "button", { anchorMin:[1,1], anchorMax:[1,1], pivot:[1,1], pos:[-18,-18], size:[46,46], color:"#ff7a5c", sprite:"round", text:"⚙", fontSize:22, bold:true });
+  const title = makeNode("Title", "text", { anchorMin:[0.5,1], anchorMax:[0.5,1], pivot:[0.5,1], pos:[0,-150], size:[400,80], text:"切切乐", fontSize:48, textColor:"#ffca62", align:"middle-center", bold:true });
+  const subtitle = makeNode("Subtitle", "text", { anchorMin:[0.5,1], anchorMax:[0.5,1], pivot:[0.5,1], pos:[0,-228], size:[360,30], text:"今天也要切个痛快", fontSize:16, textColor:"#c8ccd6", align:"middle-center" });
+  const play = makeNode("PlayBtn", "button", { anchorMin:[0.5,0.5], anchorMax:[0.5,0.5], pivot:[0.5,0.5], pos:[0,40], size:[280,78], color:"#ff7a5c", sprite:"pill", shadow:true, text:"开始游戏", fontSize:26, bold:true });
+  const shop = makeNode("ShopBtn", "button", { anchorMin:[0.5,0], anchorMax:[0.5,0], pivot:[0.5,0], pos:[-92,118], size:[170,56], color:"#ff7a5c", sprite:"pill", text:"商店", fontSize:18, bold:true });
+  const rank = makeNode("RankBtn", "button", { anchorMin:[0.5,0], anchorMax:[0.5,0], pivot:[0.5,0], pos:[92,118], size:[170,56], color:"#ff7a5c", sprite:"pill", text:"排行榜", fontSize:18, bold:true });
+  return [bg, coins, settings, title, subtitle, play, shop, rank];
+}
+// 横屏休闲游戏主页
+function buildLandscape() {
+  const bg = makeNode("Bg", "panel", { anchorMin:[0,0], anchorMax:[1,1], pivot:[0.5,0.5], pos:[0,0], size:[0,0], color:"#2b2f3a", sprite:"none" });
+  const coins = makeNode("Coins", "panel", { anchorMin:[0,1], anchorMax:[0,1], pivot:[0,1], pos:[18,-18], size:[156,46], color:"rgba(255,255,255,0.14)", sprite:"pill" });
+  coins.children.push(makeNode("CoinText", "text", { anchorMin:[0,0], anchorMax:[1,1], pivot:[0.5,0.5], pos:[0,0], size:[-16,0], text:"💰 1280", fontSize:18, textColor:"#ffe08a", align:"middle-center", bold:true }));
+  const settings = makeNode("SettingsBtn", "button", { anchorMin:[1,1], anchorMax:[1,1], pivot:[1,1], pos:[-18,-18], size:[46,46], color:"#ff7a5c", sprite:"round", text:"⚙", fontSize:22, bold:true });
+  const title = makeNode("Title", "text", { anchorMin:[0.5,1], anchorMax:[0.5,1], pivot:[0.5,1], pos:[0,-120], size:[400,80], text:"切切乐", fontSize:44, textColor:"#ffca62", align:"middle-center", bold:true });
+  const subtitle = makeNode("Subtitle", "text", { anchorMin:[0.5,1], anchorMax:[0.5,1], pivot:[0.5,1], pos:[0,-190], size:[360,30], text:"今天也要切个痛快", fontSize:16, textColor:"#c8ccd6", align:"middle-center" });
+  const play = makeNode("PlayBtn", "button", { anchorMin:[0.5,0.5], anchorMax:[0.5,0.5], pivot:[0.5,0.5], pos:[0,30], size:[280,74], color:"#ff7a5c", sprite:"pill", shadow:true, text:"开始游戏", fontSize:24, bold:true });
+  const shop = makeNode("ShopBtn", "button", { anchorMin:[0.5,0], anchorMax:[0.5,0], pivot:[0.5,0], pos:[-92,100], size:[160,52], color:"#ff7a5c", sprite:"pill", text:"商店", fontSize:16, bold:true });
+  const rank = makeNode("RankBtn", "button", { anchorMin:[0.5,0], anchorMax:[0.5,0], pivot:[0.5,0], pos:[92,100], size:[160,52], color:"#ff7a5c", sprite:"pill", text:"排行榜", fontSize:16, bold:true });
+  return [bg, coins, settings, title, subtitle, play, shop, rank];
+}
+// 空画布
+function buildBlank() {
+  const bg = makeNode("Bg", "panel", { anchorMin:[0,0], anchorMax:[1,1], pivot:[0.5,0.5], pos:[0,0], size:[0,0], color:"#26282f", sprite:"none" });
+  const tip = makeNode("Tip", "text", { anchorMin:[0.5,0.5], anchorMax:[0.5,0.5], pivot:[0.5,0.5], pos:[0,0], size:[420,40], text:"从顶部「＋ 添加」或「📐 模板」开始设计", fontSize:16, textColor:"#8b93a1", align:"middle-center" });
+  return [bg, tip];
+}
+const TEMPLATES = {
+  portrait:  { w: 720,  h: 1280, build: buildPortrait },
+  landscape: { w: 960,  h: 640,  build: buildLandscape },
+  blank:     { w: 720,  h: 1280, build: buildBlank },
+};
+function loadTemplate(key) {
+  const t = TEMPLATES[key]; if (!t) return;
+  pushUndo();
+  designW = t.w; designH = t.h;
+  root.children = t.build();
+  clearSelection();
+  render();
+}
+
+let root = makeNode("Canvas", "canvas", {});
+root.children = buildPortrait();
+
+/* ---------------- 状态 ---------------- */
+let designW = 720, designH = 1280;
+let selectedId = null;
+let currentMode = "layout";
+let showAdvanced = false; // 属性面板「高级选项」（锚点/轴心/pivot 等）是否展开
+let drag = null;
+const collapsedSet = new Set();
+const layoutSnapshot = new Map(); // nodeId -> JSON.stringify(rect)（导入策划包时记录，供美术包输出位置覆盖）
+let modal = null;
+let dragNodeId = null;   // 层级栏拖拽中的节点 id
+let editingId = null;   // 正在画布内双击编辑文本的节点 id
+let lastClickId = null, lastClickT = 0;   // 双击检测（自建，避免重渲染破坏原生 dblclick 目标身份）
+let resizing = null;   // 画布缩放手柄拖拽中：{ id, handle, startMX, startMY, w0, pw }
+
+/* ---------------- 撤销 / 重做（历史栈） ---------------- */
+let undoStack = [];
+let redoStack = [];
+function snapshotState() {
+  return JSON.stringify({ root, designW, designH });
+}
+function restoreState(s) {
+  const o = JSON.parse(s);
+  root = o.root; designW = o.designW; designH = o.designH;
+  layoutSnapshot.clear();
+  const record = n => { layoutSnapshot.set(n.id, JSON.stringify(n.rect)); n.children.forEach(record); };
+  root.children.forEach(record);
+}
+function pushUndo() {
+  const s = snapshotState();
+  if (undoStack.length && undoStack[undoStack.length - 1] === s) return;  // 与上次快照相同则不重复入栈
+  undoStack.push(s);
+  if (undoStack.length > 100) undoStack.shift();   // 上限 100 步
+  redoStack.length = 0;
+  syncHistoryBtns();
+}
+function undo() {
+  if (!undoStack.length) { flashToast("没有可撤销的操作"); return; }
+  redoStack.push(snapshotState());
+  restoreState(undoStack.pop());
+  render();
+}
+function redo() {
+  if (!redoStack.length) { flashToast("没有可重做的操作"); return; }
+  undoStack.push(snapshotState());
+  restoreState(redoStack.pop());
+  render();
+}
+function syncHistoryBtns() {
+  const u = $("btnUndo"), r = $("btnRedo");
+  if (u) { u.disabled = !undoStack.length; u.title = undoStack.length ? `撤销 (Ctrl+Z) · ${undoStack.length} 步` : "撤销 (Ctrl+Z)"; }
+  if (r) { r.disabled = !redoStack.length; r.title = redoStack.length ? `重做 (Ctrl+Y) · ${redoStack.length} 步` : "重做 (Ctrl+Y)"; }
+}
+function nudgeSelected(dx, dy) {
+  const nodes = selectedNodes().filter(n => n.type !== "canvas");
+  if (!nodes.length) return;
+  pushUndo();
+  for (const node of nodes) {
+    node.rect.pos[0] = Math.round((node.rect.pos[0] || 0) + dx);
+    node.rect.pos[1] = Math.round((node.rect.pos[1] || 0) + dy);
+  }
+  render();
+}
+
+/* ---------------- 多选 ---------------- */
+const selectedSet = new Set();   // 多选集合（始终包含 selectedId 作为主选中）
+let styleClipboard = null;       // 复制样式用的剪贴板
+function isSelected(id) { return selectedSet.has(id); }
+function selectOne(id, multi) {
+  if (!multi && selectedSet.has(id)) return;   // 非 Ctrl 点击已选中的节点：保持当前选择（多选组内点击不拆组）
+  if (multi) {
+    if (selectedSet.has(id)) {
+      selectedSet.delete(id);
+      if (selectedId === id) selectedId = selectedSet.values().next().value || null;
+    } else {
+      selectedSet.add(id); selectedId = id;
+    }
+  } else {
+    selectedSet.clear(); selectedSet.add(id); selectedId = id;
+  }
+  renderSelection(); renderTree(); renderProps();
+}
+// 仅更新选中态视觉 + 属性面板 + 右上角 HUD，不重建画布节点 DOM。
+// 关键：保持画布内 .node 元素稳定，避免重渲染导致“第二次 mousedown 接不到”而无法双击编辑（WorkBuddy 内嵌环境尤其明显）。
+function renderSelection() {
+  document.querySelectorAll(".node").forEach(el => {
+    const id = el.dataset.id;
+    el.classList.toggle("selected", !!(id && isSelected(id)));
+  });
+  updateSelHud();
+}
+function selectedNodes() {
+  const out = [];
+  for (const id of selectedSet) { const n = findNode(root, id); if (n) out.push(n); }
+  // 兜底：老代码可能只设置了 selectedId 未同步 selectedSet
+  if (!out.length && selectedId) { const n = findNode(root, selectedId); if (n) out.push(n); }
+  return out;
+}
+function setMainSelected(id) { selectedSet.clear(); selectedSet.add(id); selectedId = id; }   // 单选并同步多选集
+function clearSelection() { selectedSet.clear(); selectedId = null; }
+function selectAllNodes() {
+  const all = [];
+  const walk = n => { if (n.type !== "canvas") all.push(n.id); n.children.forEach(walk); };
+  walk(root);
+  if (!all.length) return;
+  selectedSet.clear(); all.forEach(id => selectedSet.add(id));
+  selectedId = all[all.length - 1];
+  render();
+  flashToast("已选中 " + all.length + " 个节点");
+}
+
+/* ---------------- 锚点预设 ---------------- */
+const ANCHOR_PRESETS = [
+  { label:"左上",   a:[0,1],   p:[0,1] },
+  { label:"中上",   a:[0.5,1], p:[0.5,1] },
+  { label:"右上",   a:[1,1],   p:[1,1] },
+  { label:"左中",   a:[0,0.5], p:[0,0.5] },
+  { label:"居中",   a:[0.5,0.5], p:[0.5,0.5] },
+  { label:"右中",   a:[1,0.5], p:[1,0.5] },
+  { label:"左下",   a:[0,0],   p:[0,0] },
+  { label:"中下",   a:[0.5,0], p:[0.5,0] },
+  { label:"右下",   a:[1,0],   p:[1,0] },
+  { label:"全拉伸", a:[0,0],   p:[0.5,0.5], stretch:[1,1] },
+  { label:"横拉伸", a:[0,0.5], p:[0.5,0.5], stretch:[1,0.5] },
+  { label:"纵拉伸", a:[0.5,0], p:[0.5,0.5], stretch:[0.5,1] },
+];
+function presetOf(node) {
+  const r = node.rect;
+  if (!r) return null;
+  const am = r.anchorMin || [0, 0], ax = r.anchorMax || [0, 0], pv = r.pivot || [0, 0];
+  for (const p of ANCHOR_PRESETS) {
+    const a = p.a || [0, 0], pp = p.pivot || [0, 0];
+    if (a[0]===am[0] && a[1]===am[1] && a[0]===ax[0] && a[1]===ax[1] && pp[0]===pv[0] && pp[1]===pv[1]) return p;
+  }
+  return null;
+}
+
+/* ---------------- 布局引擎（Unity uGUI 公式） ---------------- */
+function computeRect(node, parentRect) {
+  const r = node.rect;
+  const aminX = parentRect.x + r.anchorMin[0] * parentRect.w;
+  const aminY = parentRect.y + r.anchorMin[1] * parentRect.h;
+  const amaxX = parentRect.x + r.anchorMax[0] * parentRect.w;
+  const amaxY = parentRect.y + r.anchorMax[1] * parentRect.h;
+  const w = r.size[0] + (r.anchorMax[0] - r.anchorMin[0]) * parentRect.w;
+  const h = r.size[1] + (r.anchorMax[1] - r.anchorMin[1]) * parentRect.h;
+  const x = aminX + (amaxX - aminX) * r.pivot[0] + r.pos[0] - w * r.pivot[0];
+  const y = aminY + (amaxY - aminY) * r.pivot[1] + r.pos[1] - h * r.pivot[1];
+  return { x, y, w, h };
+}
+
+/* ---------------- 树遍历 ---------------- */
+function findNode(node, id) {
+  if (node.id === id) return node;
+  for (const c of node.children) { const f = findNode(c, id); if (f) return f; }
+  return null;
+}
+function findParent(tree, id) {
+  for (const c of tree.children) {
+    if (c.id === id) return tree;
+    const f = findParent(c, id);
+    if (f) return f;
+  }
+  return null;
+}
+function countNodes(n) { let k = 1; for (const c of n.children) k += countNodes(c); return k; }
+
+/* ---------------- 渲染入口 ---------------- */
+function render() {
+  renderCanvas();
+  renderTree();
+  renderProps();
+  const nc = $("nodeCount"); if (nc) nc.textContent = countNodes(root) + " 节点";
+  const cl = $("cnvLabel"); if (cl) cl.textContent = `Canvas ${designW}×${designH} · ${currentMode === "layout" ? "排版" : "装饰"}模式`;
+  const mh = $("modeHint");
+  if (mh) mh.innerHTML = currentMode === "layout"
+    ? "策划：编辑 <span class='text-info'>布局/文本</span> · 完成后导出策划包发美术"
+    : "美术：可编辑 <span class='text-info'>视觉/素材/文本/布局</span> · 画布拖动或手柄缩放 · 导出完整包给程序";
+  scheduleAutosave();
+}
+
+/* ---- 画布 ---- */
+let _renderingCanvas = false;
+function renderCanvas() {
+  if (_renderingCanvas) return;   // 防重入：blur 等事件中同步触发 render() 时，避免递归 removeChild 报错
+  _renderingCanvas = true;
+  try {
+  const box = $("canvasBox");
+  const wrap = $("canvasWrap");
+  // 清空画布但保留 cnvLabel 标签（否则 render() 末尾设置其文本会取到 null 抛错，中断后续逻辑）
+  // 父节点守卫：避免在 blur 等事件中同步重渲染时二次移除已分离节点而报错
+  [...box.children].forEach(ch => { if (ch.id !== "cnvLabel" && ch.parentNode === box) box.removeChild(ch); });
+  const availW = Math.max(200, wrap.clientWidth - 60);
+  const availH = Math.max(200, wrap.clientHeight - 60);
+  const scale = Math.min(availW / designW, availH / designH);
+  const boxW = Math.round(designW * scale), boxH = Math.round(designH * scale);
+  box.style.width = boxW + "px";
+  box.style.height = boxH + "px";
+  const parentRect = { x: 0, y: 0, w: designW, h: designH };
+  const bgEl = document.createElement("div");
+  bgEl.style.cssText = "position:absolute;inset:0;background:#26292f;";
+  box.appendChild(bgEl);
+  for (const child of root.children) renderNode(child, box, parentRect, scale);
+  if (previewMode) renderPreviewChrome(box); else updateSelHud();
+  } finally { _renderingCanvas = false; }
+}
+
+// 选中信息浮层：固定在画布右上角，不遮挡节点本体，保证拖拽手感
+function updateSelHud() {
+  const hud = $("selHud"); if (!hud) return;
+  if (selectedSet.size === 0) { hud.style.display = "none"; return; }
+  if (selectedSet.size === 1) {
+    const n = findNode(root, [...selectedSet][0]);
+    if (!n) { hud.style.display = "none"; return; }
+    const w = worldRectOf(n);
+    hud.innerHTML = `${esc(n.name)} <span>· ${n.type} · ${Math.round(w.w)}×${Math.round(w.h)}</span>`;
+  } else {
+    hud.innerHTML = `已选 ${selectedSet.size} 个节点`;
+  }
+  hud.style.display = "block";
+}
+
+function renderNode(node, parentEl, parentRect, scale) {
+  if (node.hidden) return;   // 隐藏节点不渲染（连同子树）
+  const rc = computeRect(node, parentRect);
+  const el = document.createElement("div");
+  const sel = !previewMode && isSelected(node.id);
+  el.className = "node" + (sel ? " selected" : "") + (node.locked ? " locked" : "");
+  el.dataset.id = node.id;
+  el.style.left = ((rc.x - parentRect.x) * scale) + "px";
+  el.style.top = ((parentRect.y + parentRect.h - (rc.y + rc.h)) * scale) + "px";
+  el.style.width = Math.max(1, rc.w * scale) + "px";
+  el.style.height = Math.max(1, rc.h * scale) + "px";
+  applyVisual(node, el, scale);
+  el.addEventListener("mousedown", ev => onNodeMouseDown(ev, node));
+  el.addEventListener("contextmenu", ev => {
+    ev.preventDefault(); ev.stopPropagation();
+    selectOne(node.id, ev.ctrlKey || ev.metaKey);
+    openCtxMenuForNode(node, ev.clientX, ev.clientY);
+  });
+  parentEl.appendChild(el);
+  // 缩放手柄：选中且未锁定、非画布根、非预览模式即可缩放（所有类型 panel/button/text/image 均可拖拽四角/四边改变尺寸）
+  if (!previewMode && !node.locked && node.type !== "canvas") {
+    if (sel) {
+      for (const h of ["nw","n","ne","e","se","s","sw","w"]) {
+        const hd = document.createElement("div");
+        hd.className = "resize-handle";
+        hd.dataset.handle = h;
+        const off = "-5px";
+        if (h.includes("w")) hd.style.left = off; else if (h.includes("e")) hd.style.right = off; else { hd.style.left = "50%"; hd.style.transform = "translateX(-50%)"; }
+        if (h.includes("n")) hd.style.top = off; else if (h.includes("s")) hd.style.bottom = off; else { hd.style.top = "50%"; if (!h.includes("w") && !h.includes("e")) hd.style.transform = "translate(-50%,-50%)"; else hd.style.transform += " translateY(-50%)"; }
+        hd.style.cursor = handleCursor(h);
+        hd.addEventListener("mousedown", ev => onHandleMouseDown(ev, node, h));
+        el.appendChild(hd);
+      }
+    }
+  }
+  for (const c of node.children) renderNode(c, el, rc, scale);
+}
+
+function applyVisual(node, el, scale) {
+  const s = node.style;
+  if (node.type === "canvas") { el.style.background = "transparent"; return; }
+  if (node.type === "text") {
+    const t = node.text || {};
+    el.style.display = "flex";
+    el.style.alignItems = alignCss(t.align).y;
+    el.style.justifyContent = alignCss(t.align).x;
+    el.style.color = t.color;
+    el.style.fontSize = (t.fontSize || 18) * scale + "px";
+    el.style.fontWeight = t.bold ? "700" : "400";
+    el.style.whiteSpace = "pre-wrap";
+    el.style.lineHeight = (t.lineSpacing || 1.25);
+    const txt = document.createElement("div");
+    txt.dataset.role = "text";
+    txt.style.textAlign = alignCss(t.align).align;
+    txt.textContent = t.content;
+    el.appendChild(txt);
+    return;
+  }
+  if (node.type === "image") {
+    const src = (node.image && (node.image.data || node.image.src)) || "";
+    if (src) {
+      el.style.backgroundImage = `url(${JSON.stringify(src)})`;
+      el.style.backgroundSize = (node.image && node.image.fit === "contain") ? "contain" : "cover";
+      el.style.backgroundPosition = "center";
+      el.style.backgroundRepeat = "no-repeat";
+    } else {
+      el.style.background = "repeating-linear-gradient(45deg,#3a3d47,#3a3d47 8px,#33363e 8px,#33363e 16px)";
+    }
+    // 外观（形状）：默认 none（不套形状），与 panel/button 的 sprite 概念一致
+    const ap = node.image && node.image.sprite;
+    if (ap === "pill") el.style.borderRadius = "999px";
+    else if (ap === "round") el.style.borderRadius = `${18 * scale}px`;
+    else el.style.borderRadius = "0";
+    el.style.overflow = "hidden";
+    return;
+  }
+  // panel / button —— 优先美术素材替换
+  const color = s.color || "#3a3d47";
+  const bg = s.bgImageData || s.bgImage;
+  if (bg) {
+    el.style.backgroundImage = `url(${JSON.stringify(bg)})`;
+    el.style.backgroundSize = s.fit === "contain" ? "contain" : "cover";
+    el.style.backgroundPosition = "center";
+    el.style.backgroundRepeat = "no-repeat";
+    el.style.backgroundColor = color;
+  } else {
+    el.style.background = color;
+  }
+  switch (s.sprite) {
+    case "pill": el.style.borderRadius = "999px"; break;
+    case "ring":
+      el.style.background = "transparent";
+      el.style.border = `${Math.max(2, 6 * scale)}px solid ${color}`;
+      el.style.borderRadius = "50%";
+      break;
+    case "none": el.style.borderRadius = "0"; break;
+    default: el.style.borderRadius = `${18 * scale}px`; break;
+  }
+  if (s.shadow) el.style.boxShadow = `0 ${4 * scale}px ${10 * scale}px rgba(0,0,0,.28)`;
+  if (node.type === "button") {
+    el.style.cursor = "pointer";
+    if (!node.children.some(c => c.type === "text")) {
+      const t = node.text || { content: "按钮", fontSize: 18, color: "#fff" };
+      el.style.display = "flex";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+      el.style.color = t.color;
+      el.style.fontSize = (t.fontSize || 18) * scale + "px";
+      el.style.fontWeight = t.bold ? "700" : "400";
+      const txt = document.createElement("div");
+      txt.textContent = t.content;
+      el.appendChild(txt);
+    }
+  }
+}
+
+const ALIGN_MAP = {
+  "upper-left":    { x:"flex-start", y:"flex-start", align:"left" },
+  "upper-center":  { x:"center",     y:"flex-start", align:"center" },
+  "upper-right":   { x:"flex-end",   y:"flex-start", align:"right" },
+  "middle-left":   { x:"flex-start", y:"center",     align:"left" },
+  "middle-center": { x:"center",     y:"center",     align:"center" },
+  "middle-right":  { x:"flex-end",   y:"center",     align:"right" },
+  "lower-left":    { x:"flex-start", y:"flex-end",   align:"left" },
+  "lower-center":  { x:"center",     y:"flex-end",   align:"center" },
+  "lower-right":   { x:"flex-end",   y:"flex-end",   align:"right" },
+};
+function alignCss(key) { return ALIGN_MAP[key] || ALIGN_MAP["middle-center"]; }
+
+/* ---- 节点树 ---- */
+function renderTree() {
+  const tree = $("tree");
+  tree.innerHTML = "";
+  function walk(node, depth) {
+    const row = document.createElement("div");
+    row.className = "tree-item" + (isSelected(node.id) ? " selected" : "") + (node.locked ? " locked" : "") + (node.hidden ? " hidden-node" : "");
+    row.style.paddingLeft = (6 + depth * 16) + "px";
+    if (depth === 0) row.style.fontWeight = "700";
+    row.dataset.id = node.id;
+    if (node.type !== "canvas") { row.draggable = true; row.style.cursor = "grab"; }
+    const hasChildren = node.children.length > 0;
+    const caret = document.createElement("span");
+    caret.className = "caret";
+    caret.textContent = hasChildren ? (collapsedSet.has(node.id) ? "▸" : "▾") : "·";
+    caret.style.visibility = hasChildren ? "visible" : "hidden";
+    const badge = document.createElement("span");
+    badge.className = "type-badge tb-" + node.type;
+    badge.textContent = { panel:"P", button:"B", text:"T", image:"I", canvas:"C" }[node.type] || "?";
+    const nm = document.createElement("span");
+    nm.className = "nm"; nm.textContent = node.name;
+    row.append(caret, badge, nm);
+    // 锁定 / 隐藏的快捷开关（点击切换，方便不记快捷键）
+    if (node.type !== "canvas") {
+      const ops = document.createElement("span");
+      ops.className = "tree-ops";
+      const lockIcon = document.createElement("span");
+      lockIcon.className = "tree-op" + (node.locked ? " on" : "");
+      lockIcon.textContent = node.locked ? "🔒" : "🔓";
+      lockIcon.title = "锁定/解锁（锁定后画布不可拖动）";
+      lockIcon.addEventListener("click", ev => { ev.stopPropagation(); setMainSelected(node.id); toggleLock(); });
+      const hideIcon = document.createElement("span");
+      hideIcon.className = "tree-op" + (node.hidden ? " on" : "");
+      hideIcon.textContent = node.hidden ? "🙈" : "👁";
+      hideIcon.title = "隐藏/显示（隐藏后画布不渲染，导出标记 hidden）";
+      hideIcon.addEventListener("click", ev => { ev.stopPropagation(); setMainSelected(node.id); toggleHidden(); });
+      ops.append(lockIcon, hideIcon);
+      row.append(ops);
+    }
+    row.addEventListener("click", ev => {
+      ev.stopPropagation();
+      if (caret.contains(ev.target) && hasChildren) { toggleCollapse(node.id); return; }
+      selectOne(node.id, ev.ctrlKey || ev.metaKey);
+    });
+    row.addEventListener("contextmenu", ev => {
+      ev.preventDefault(); ev.stopPropagation();
+      selectOne(node.id, ev.ctrlKey || ev.metaKey);
+      openCtxMenuForNode(node, ev.clientX, ev.clientY);
+    });
+    row.addEventListener("dragstart", ev => {
+      dragNodeId = node.id;
+      ev.dataTransfer.effectAllowed = "move";
+      try { ev.dataTransfer.setData("text/plain", node.id); } catch (e) {}
+      row.classList.add("dragging");
+    });
+    row.addEventListener("dragend", () => {
+      dragNodeId = null;
+      $("tree").querySelectorAll(".tree-item").forEach(r => r.classList.remove("drop-before","drop-after","drop-child","dragging"));
+    });
+    tree.appendChild(row);
+    if (hasChildren && !collapsedSet.has(node.id)) for (const c of node.children) walk(c, depth + 1);
+  }
+  walk(root, 0);
+}
+function toggleCollapse(id) { collapsedSet.has(id) ? collapsedSet.delete(id) : collapsedSet.add(id); renderTree(); }
+
+/* ---- 属性面板 ---- */
+function renderProps() {
+  const box = $("props");
+  if (!selectedId) { box.innerHTML = '<div class="text-secondary" style="font-size:12px">点击画布或左侧层级选中一个节点进行编辑</div>'; return; }
+  const node = findNode(root, selectedId);
+  if (!node) { clearSelection(); return renderProps(); }
+  // —— 多选批量面板 ——
+  if (selectedSet.size > 1) {
+    const n = selectedSet.size;
+    box.innerHTML = `
+      <div class="prop-group"><div class="pg-title">已选 ${n} 个节点</div>
+        <div class="mb-2"><small class="text-secondary">Ctrl+点击可增减选择；再次点击已选中节点保持组</small></div>
+        <div class="mb-2"><button class="btn btn-sm btn-primary w-100" onclick="groupSelected()">➕ 组合 (Ctrl+G)</button></div>
+        <div class="mb-2"><button class="btn btn-sm btn-outline-secondary w-100" onclick="ungroupSelected()">✂️ 取消组合 (Ctrl+Shift+G)</button></div>
+        <div class="mb-1"><label class="form-label" style="font-size:12px">对齐（以选中整体包围盒为基准，仅同父级）</label>
+          <div class="d-flex flex-wrap gap-1 mb-1">
+            <button class="btn btn-outline-secondary btn-sm" style="flex:1;min-width:88px" title="所有节点左边对齐到选区最左" onclick="alignSelected('left')">⫷ 左对齐</button>
+            <button class="btn btn-outline-secondary btn-sm" style="flex:1;min-width:88px" title="所有节点水平居中到选区中心线" onclick="alignSelected('hcenter')">⇹ 水平居中</button>
+            <button class="btn btn-outline-secondary btn-sm" style="flex:1;min-width:88px" title="所有节点右边对齐到选区最右" onclick="alignSelected('right')">⫸ 右对齐</button>
+            <button class="btn btn-outline-secondary btn-sm" style="flex:1;min-width:88px" title="所有节点顶边对齐到选区最高点" onclick="alignSelected('top')">⇧ 顶对齐</button>
+            <button class="btn btn-outline-secondary btn-sm" style="flex:1;min-width:88px" title="所有节点垂直居中到选区中心线" onclick="alignSelected('vcenter')">⇵ 垂直居中</button>
+            <button class="btn btn-outline-secondary btn-sm" style="flex:1;min-width:88px" title="所有节点底边对齐到选区最低点" onclick="alignSelected('bottom')">⇩ 底对齐</button>
+          </div>
+        </div>
+        <div class="d-flex gap-1 mb-2">
+          <button class="btn btn-outline-secondary btn-sm flex-fill" onclick="toggleLock()">🔒 锁定/解锁</button>
+          <button class="btn btn-outline-secondary btn-sm flex-fill" onclick="toggleHidden()">🙈 隐藏/显示</button>
+        </div>
+        <div class="d-flex gap-1">
+          <button class="btn btn-outline-secondary btn-sm flex-fill" onclick="copySelected()">⧉ 复制</button>
+          <button class="btn btn-danger btn-sm flex-fill" onclick="deleteSelected()">🗑 删除</button>
+        </div>
+      </div>`;
+    return;
+  }
+  const isCanvas = node.type === "canvas";
+  const canLayout = currentMode === "layout" && !isCanvas;
+  const canDecor = currentMode === "decor" && !isCanvas;
+
+  let h = `<div class="node-meta"><div class="nm">${esc(node.name)}</div><div class="ty">type: ${node.type} · id: ${node.id}</div></div>`;
+
+  if (!isCanvas) {
+    const TYPE_OPTIONS = [["panel","面板 Panel"],["button","按钮 Button"],["text","文本 Text"],["image","图片 Image"]];
+    h += group("类型（可切换）", `
+      <select class="form-select form-select-sm" onchange="changeType(this.value)">
+        ${TYPE_OPTIONS.map(([v,l]) => `<option value="${v}" ${node.type === v ? "selected" : ""}>${l}</option>`).join("")}
+      </select>
+      <div class="text-secondary" style="font-size:11px">切换后按该类型补齐默认属性，原有布局保持不变</div>
+      <div class="text-secondary" style="font-size:11px">Unity 映射：Panel→Image · Button→Button · Text→Text · Image→Image</div>`);
+  }
+
+  if (isCanvas) {
+    h += group("画布", `
+      <div class="mb-2"><label class="form-label">设计尺寸</label>
+      <div class="text-secondary" style="font-size:12px">${designW} × ${designH}（顶部「屏幕比例」下拉可切换）</div></div>
+      <div class="text-secondary" style="font-size:12px">根节点不可删除；子节点挂在画布下</div>`);
+  } else {
+    if (canLayout) {
+      h += group("RectTransform（策划布局）", layoutFields(node));
+    } else if (currentMode === "decor") {
+      // 美术模式同样开放全部布局与文本编辑能力（与策划一致），方便美术在装饰阶段直接改文案/对齐/布局
+      h += group("RectTransform（布局 · 美术可编辑）", layoutFields(node));
+    }
+    if (!isCanvas) {
+      h += group(node.type === "text" ? "Text 组件（文本）" : "Image 组件（外观）", decorFields(node));
+    }
+    if (canLayout) {
+      h += `<button class="btn btn-danger btn-sm w-100 mt-2" onclick="deleteSelected()">删除节点</button>`;
+    }
+  }
+  box.innerHTML = h;
+}
+function group(title, inner) { return `<div class="prop-group"><div class="pg-title">${title}</div>${inner}</div>`; }
+function numRow(label, key, v, step = 1) {
+  return `<div class="mb-1"><label class="form-label">${label}</label>
+    <input type="number" step="${step}" class="form-control form-control-sm" value="${v}" oninput="editNum('${key}',this.value,true)" onchange="editNum('${key}',this.value,false)"></div>`;
+}
+function editNum(key, v, live) {
+  const node = findNode(root, selectedId); if (!node) return;
+  const n = parseFloat(v); if (isNaN(n)) return;
+  pushUndo();
+  const parts = key.split(".");
+  let o = node;
+  for (let i = 0; i < parts.length - 1; i++) o = o[parts[i]];
+  o[parts[parts.length - 1]] = n;
+  if (live) renderCanvas(); else render();
+}
+
+function layoutFields(n) {
+  const r = n.rect;
+  let h = "";
+  // —— 基础：位置 + 宽高（策划日常最常调）——
+  h += `<div class="row g-1">
+    <div class="col-6">${numRow("位置 X", "rect.pos.0", r.pos[0])}</div>
+    <div class="col-6">${numRow("位置 Y", "rect.pos.1", r.pos[1])}</div>
+    <div class="col-6">${numRow("宽", "rect.size.0", r.size[0])}</div>
+    <div class="col-6">${numRow("高", "rect.size.1", r.size[1])}</div>
+  </div>`;
+  h += `<div class="mb-2"><label class="form-label">节点名称</label>
+    <input type="text" class="form-control form-control-sm" value="${esc(n.name)}" onchange="renameNode(this.value)"></div>`;
+  // —— 文本相关（text / button 直接显示，不折叠进高级选项）——
+  if (n.type === "text" || n.type === "button") {
+    const t = n.text || {};
+    h += `<div class="mb-2"><label class="form-label">文本内容</label>
+      <textarea rows="2" class="form-control form-control-sm" onchange="setText('content',this.value)">${esc(t.content || "")}</textarea></div>`;
+    h += numRow("字号", "text.fontSize", t.fontSize || 18);
+    h += `<div class="mb-2"><label class="form-label">对齐</label>
+      <select class="form-select form-select-sm" onchange="setText('align',this.value)">
+      ${["upper-left","upper-center","upper-right","middle-left","middle-center","middle-right","lower-left","lower-center","lower-right"]
+        .map(a => `<option value="${a}" ${t.align === a ? "selected" : ""}>${a}</option>`).join("")}</select></div>`;
+    h += `<div class="form-check form-switch mb-1"><input class="form-check-input" type="checkbox" ${t.bold ? "checked" : ""} onchange="setText('bold',this.checked)"><label class="form-check-label" style="font-size:12px">加粗</label></div>`;
+  }
+  // —— 高级选项：锚点 / 轴心 / pivot 等复杂属性默认折叠 ——
+  h += `<div class="mb-2"><button class="btn btn-sm btn-outline-secondary w-100" type="button" onclick="toggleAdvanced()">⚙ 高级选项 ${showAdvanced ? "▲ 收起" : "▼ 展开"}</button></div>`;
+  if (showAdvanced) {
+    const pres = presetOf(n);
+    const presetOpts = ANCHOR_PRESETS.map(p => `<option value="${p.label}" ${pres && pres.label === p.label ? "selected" : ""}>${p.label}</option>`).join("");
+    h += `<div class="adv-body border rounded p-2 mb-2" style="background:rgba(127,127,127,.08)">`;
+    h += `<div class="mb-2"><label class="form-label">锚点预设（对应 Unity RectTransform 锚点）</label>
+      <select class="form-select form-select-sm" onchange="applyPreset(this.value)"><option value="">自定义…</option>${presetOpts}</select></div>`;
+    h += `<div class="row g-1">
+      <div class="col-6">${numRow("anchorMin.x", "rect.anchorMin.0", r.anchorMin[0], 0.05)}</div>
+      <div class="col-6">${numRow("anchorMin.y", "rect.anchorMin.1", r.anchorMin[1], 0.05)}</div>
+      <div class="col-6">${numRow("anchorMax.x", "rect.anchorMax.0", r.anchorMax[0], 0.05)}</div>
+      <div class="col-6">${numRow("anchorMax.y", "rect.anchorMax.1", r.anchorMax[1], 0.05)}</div>
+      <div class="col-6">${numRow("pivot.x", "rect.pivot.0", r.pivot[0], 0.05)}</div>
+      <div class="col-6">${numRow("pivot.y", "rect.pivot.1", r.pivot[1], 0.05)}</div>
+    </div>`;
+    h += `</div>`;
+  }
+  return h;
+}
+
+function decorFields(n) {
+  const s = n.style;
+  let h = "";
+  if (n.type === "image") {
+    const cur = (n.image && n.image.src) || "";
+    const fit = (n.image && n.image.fit) || "contain";
+    h += `<div class="mb-2"><label class="form-label">图片素材（从本地选择）</label>
+      <input type="file" accept="image/*" class="form-control form-control-sm" onchange="pickImageFile(this,'image')">
+      <div class="text-secondary" style="font-size:11px">${cur ? "当前资源：" + esc(cur) : "未选择，使用占位纹理"}</div>
+      ${cur ? `<button class="btn btn-sm btn-outline-danger mt-1" type="button" onclick="clearImageSrc()">清除素材</button>` : ""}</div>`;
+    // 外观（形状）：默认「无」，即不套圆角/矩形，按图片本身形状显示；可选圆角矩形/胶囊
+    h += `<div class="mb-2"><label class="form-label">外观（形状）</label>
+      <select class="form-select form-select-sm" onchange="setImageSprite(this.value)">
+        ${[["none","无（保留图片原形状）"],["round","圆角矩形"],["pill","胶囊"]].map(([v,l]) => `<option value="${v}" ${(n.image&&n.image.sprite||"none")===v?"selected":""}>${l}</option>`).join("")}</select>
+      <div class="text-secondary" style="font-size:11px">导入默认「无」：不套任何形状约束</div></div>`;
+    if (cur) {
+      h += `<div class="mb-2"><label class="form-label">适配方式</label>
+        <select class="form-select form-select-sm" onchange="setImageFit(this.value)">
+          <option value="contain" ${fit === "contain" ? "selected" : ""}>contain（完整显示·保留原形状）</option>
+          <option value="cover" ${fit === "cover" ? "selected" : ""}>cover（铺满裁切·填满框）</option>
+        </select></div>`;
+      h += `<div class="text-secondary mb-2" style="font-size:11px">拖动画布四角手柄可等比例缩放，拖四边可横/竖自由拉伸。导入即按图片原比例放置，不再套用圆角/矩形约束。</div>`;
+    }
+    return h;
+  }
+  if (n.type === "text") {
+    const t = n.text || {};
+    // 字号/对齐/加粗已在上方 layoutFields（文本内容）中提供，这里仅补「文字颜色」这一视觉项，避免重复
+    h += colorRow("文字颜色", t.color, "setTextColor");
+    return h;
+  }
+  // panel / button
+  const curBg = s.bgImage || "";
+  h += `<div class="mb-2"><label class="form-label">背景素材（替换纯色，从本地选择）</label>
+    <input type="file" accept="image/*" class="form-control form-control-sm" onchange="pickImageFile(this,'style')">
+    <div class="text-secondary" style="font-size:11px">${curBg ? "当前资源：" + esc(curBg) : "未选择，使用纯色底"}</div>
+    ${curBg ? `<button class="btn btn-sm btn-outline-danger mt-1" type="button" onclick="clearBgImage()">清除素材</button>` : ""}</div>`;
+  if (curBg) {
+    h += `<div class="mb-2"><label class="form-label">适配方式</label>
+      <select class="form-select form-select-sm" onchange="setStyle('fit',this.value)">
+        <option value="cover" ${s.fit === "cover" ? "selected" : ""}>cover（铺满裁切）</option>
+        <option value="contain" ${s.fit === "contain" ? "selected" : ""}>contain（完整显示）</option>
+      </select></div>`;
+  }
+  h += colorRow("底色", s.color, "setStyleColor");
+  h += `<div class="mb-2"><label class="form-label">形状</label>
+    <select class="form-select form-select-sm" onchange="setStyle('sprite',this.value)">
+    ${[["round","圆角矩形"],["pill","胶囊"],["ring","圆环"],["none","无"]].map(([v,l]) => `<option value="${v}" ${s.sprite===v?"selected":""}>${l}</option>`).join("")}</select></div>`;
+  h += `<div class="form-check form-switch mb-1"><input class="form-check-input" type="checkbox" ${s.shadow ? "checked" : ""} onchange="setStyle('shadow',this.checked)"><label class="form-check-label" style="font-size:12px">阴影</label></div>`;
+  h += `<div class="form-check form-switch mb-1"><input class="form-check-input" type="checkbox" ${s.raycast ? "checked" : ""} onchange="setStyle('raycast',this.checked)"><label class="form-check-label" style="font-size:12px">挡射线（模态背景）</label></div>`;
+  return h;
+}
+
+function colorRow(label, rgba, setterName) {
+  const hex = rgbaToHex(rgba), a = alphaOf(rgba);
+  return `<div class="mb-2"><label class="form-label">${label}</label>
+    <div class="d-flex align-items-center gap-2">
+      <input type="color" class="form-control form-control-color" style="width:36px;height:30px;padding:2px" value="${hex}" onchange="${setterName}('${hex}', ${a})">
+      <input type="range" class="form-range flex-grow-1" min="0" max="1" step="0.05" value="${a}" onchange="${setterName}('${hex}', this.value)">
+    </div></div>`;
+}
+
+function applyPreset(label) {
+  const node = findNode(root, selectedId); if (!node) return;
+  const p = ANCHOR_PRESETS.find(x => x.label === label);
+  if (!p) return;
+  pushUndo();
+  const r = node.rect;
+  r.anchorMin = p.a.slice();
+  r.anchorMax = p.stretch ? p.stretch.slice() : p.a.slice();
+  r.pivot = p.p.slice();
+  render();
+}
+function renameNode(v) { const n = findNode(root, selectedId); if (n) { pushUndo(); n.name = v || "node"; render(); } }
+function setText(key, v) {
+  const n = findNode(root, selectedId); if (!n || !n.text) return;
+  pushUndo();
+  if (key === "bold") n.text.bold = !!v; else n.text[key] = v;
+  render();
+}
+function setTextColor(hex, a) { const n = findNode(root, selectedId); if (!n || !n.text) return; pushUndo(); n.text.color = hexToRgba(hex, +a); render(); }
+function setStyle(key, v) { const n = findNode(root, selectedId); if (n) { pushUndo(); n.style[key] = v; render(); } }
+function setStyleColor(hex, a) { const n = findNode(root, selectedId); if (n) { pushUndo(); n.style.color = hexToRgba(hex, +a); render(); } }
+function toggleAdvanced() { showAdvanced = !showAdvanced; renderProps(); }
+
+// 背景素材 / 图片素材：从本地选择文件，读取为 dataURL 供网页预览，
+// 同时把文件名存入 style.bgImage / image.src 作为 Unity Resources 资源名（与 Unity 一一对应）
+function pickImageFile(input, kind) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const n = findNode(root, selectedId); if (!n) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const data = reader.result; // data:image/...;base64,...
+    pushUndo();
+    if (kind === "style") {
+      n.style.bgImage = file.name;
+      n.style.bgImageData = data;
+      n.style.sprite = "none";   // 导入素材后外观默认「无」：不套圆角/形状
+      n.style.fit = "contain";   // 素材完整显示，不裁切（已把框设为图片原比例，cover 也不会裁）
+      // 读自然尺寸，按图片原本比例把节点尺寸设为适配设计区的大小（中心不变），形状交给 sprite=none
+      // → 导入素材后按钮/面板的形状与大小被素材替代，除了仍是按钮/面板外与图片无异
+      const img = new Image();
+      img.onload = () => {
+        const nw = img.naturalWidth, nh = img.naturalHeight;
+        if (nw && nh) {
+          let w = nw, h = nh;
+          const maxW = designW * 0.7, maxH = designH * 0.7;
+          const k = Math.min(maxW / w, maxH / h, 1);
+          w = Math.round(w * k); h = Math.round(h * k);
+          const pr = worldRectOf(findParent(root, n.id));
+          const w0 = worldRectOf(n);
+          const cx = w0.x + w0.w / 2, cy = w0.y + w0.h / 2;
+          remapRectToParent(n, { x: cx - w / 2, y: cy - h / 2, w, h }, pr);
+        }
+        render();
+      };
+      img.src = data;
+    } else if (kind === "image" && n.image) {
+      n.image.src = file.name;
+      n.image.data = data;
+      n.image.fit = "contain";   // 保留图片原本形状，默认不裁切
+      n.image.sprite = "none";   // 外观默认「无」：不套圆角/形状
+      // 读取自然尺寸，按图片原本比例把节点尺寸设为适配设计区的大小（中心不变），不强行套用矩形/圆角
+      const img = new Image();
+      img.onload = () => {
+        const nw = img.naturalWidth, nh = img.naturalHeight;
+        if (nw && nh) {
+          n.image.natW = nw; n.image.natH = nh;
+          let w = nw, h = nh;
+          const maxW = designW * 0.7, maxH = designH * 0.7;
+          const k = Math.min(maxW / w, maxH / h, 1);
+          w = Math.round(w * k); h = Math.round(h * k);
+          const pr = worldRectOf(findParent(root, n.id));
+          const w0 = worldRectOf(n);
+          const cx = w0.x + w0.w / 2, cy = w0.y + w0.h / 2;   // 以当前中心为锚，保持位置不变
+          remapRectToParent(n, { x: cx - w / 2, y: cy - h / 2, w, h }, pr);
+        }
+        render();
+      };
+      img.src = data;
+    }
+    render();
+  };
+  reader.readAsDataURL(file);
+}
+function clearBgImage() { const n = findNode(root, selectedId); if (n) { pushUndo(); n.style.bgImage = ""; n.style.bgImageData = ""; render(); } }
+function clearImageSrc() { const n = findNode(root, selectedId); if (n && n.image) { pushUndo(); n.image.src = ""; n.image.data = ""; render(); } }
+function setImageFit(v) { const n = findNode(root, selectedId); if (n && n.image) { pushUndo(); n.image.fit = v; render(); } }
+function setImageSprite(v) { const n = findNode(root, selectedId); if (n && n.image) { pushUndo(); n.image.sprite = v; render(); } }
+function deleteSelected() {
+  if (!selectedSet.size) return;
+  pushUndo();
+  const ids = new Set(selectedSet);
+  const prune = nodes => {
+    const out = [];
+    for (const n of nodes) {
+      if (ids.has(n.id)) continue;
+      n.children = prune(n.children);
+      out.push(n);
+    }
+    return out;
+  };
+  root.children = prune(root.children);
+  clearSelection();
+  render();
+}
+
+/* ---------------- 拖拽（两种模式均可用；仅点锚点节点） ---------------- */
+function onNodeMouseDown(ev, node) {
+  if (previewMode) return;   // 预览模式只读，不响应编辑交互
+  ev.stopPropagation();
+  if (ev.button === 2) return;   // 右键交给 contextmenu，不触发拖拽
+  if (editingId === node.id) return;   // 正在编辑文本：点击交给 contenteditable，不拖拽
+  if (node.locked) return;       // 锁定节点不可交互
+  if (node.type === "text") ev.preventDefault();   // 阻止原生文本选择/拖选，保证文本可拖动
+  // 双击文本节点进入编辑（自建双击检测，独立于原生 dblclick，重渲染也不失效）
+  if (node.type === "text" && ev.button === 0) {
+    const now = Date.now();
+    if (lastClickId === node.id && now - lastClickT < 500) {
+      lastClickId = null; lastClickT = 0;
+      const txt = ev.currentTarget.querySelector('[data-role="text"]');
+      if (txt) startTextEdit(node, txt);
+      drag = null;   // 取消首次 mousedown 可能挂起的拖拽，避免 mouseup 重渲染冲掉编辑元素
+      return;   // 双击：进入编辑，不启动拖拽
+    }
+    lastClickId = node.id; lastClickT = now;
+  }
+  const multi = ev.ctrlKey || ev.metaKey;
+  if (!isSelected(node.id)) selectOne(node.id, multi);   // 未选中：单选或 Ctrl 追加
+  // 已选中（含多选组）→ 保持当前选择，拖拽整组
+  const r = node.rect;
+  const isPointAnchor = r.anchorMin[0] === r.anchorMax[0] && r.anchorMin[1] === r.anchorMax[1];
+  if (!isPointAnchor && node.type !== "text") return; // 拉伸的非文本节点用属性面板调整；文本节点（含拉伸）始终可拖动/微调
+  // Alt+拖拽 = 快速复制（Figma / PS 习惯）
+  if (ev.altKey && node.type !== "canvas") {
+    ev.preventDefault();
+    pushUndo();
+    const clone = cloneWithNewIds(node);
+    const parent = findParent(root, node.id);
+    const idx = parent.children.findIndex(c => c.id === node.id);
+    parent.children.splice(idx + 1, 0, clone);
+    selectedSet.clear(); selectedSet.add(clone.id); selectedId = clone.id;
+    drag = { id: clone.id, ids: [clone.id], startMX: ev.clientX, startMY: ev.clientY, orig: [clone.rect.pos.slice()] };
+    document.body.style.cursor = "copy";
+    render();
+    return;
+  }
+  // 拖拽整个选中组（排除画布与锁定节点）
+  const sel = selectedNodes().filter(n => n.type !== "canvas" && !n.locked);
+  const group = sel.length ? sel : [node];
+  drag = { id: node.id, ids: group.map(n => n.id), startMX: ev.clientX, startMY: ev.clientY, orig: group.map(n => n.rect.pos.slice()) };
+  document.body.style.cursor = "move";
+}
+// —— 缩放手柄：图片节点 / 美术模式下，拖拽手柄改变节点尺寸（保持锚点/轴心，世界位置由 remapRectToParent 重算）——
+function handleCursor(h) {
+  if (h === "n" || h === "s") return "ns-resize";
+  if (h === "e" || h === "w") return "ew-resize";
+  if (h === "nw" || h === "se") return "nwse-resize";
+  return "nesw-resize";
+}
+function onHandleMouseDown(ev, node, handle) {
+  ev.stopPropagation();   // 不触发节点拖拽
+  ev.preventDefault();
+  if (node.locked) return;
+  if (editingId === node.id) return;
+  pushUndo();
+  const parent = findParent(root, node.id);
+  const pw = worldRectOf(parent);
+  const w0 = worldRectOf(node);   // 记录起始世界矩形（x 左、y 底、w/h 正）
+  resizing = { id: node.id, handle, startMX: ev.clientX, startMY: ev.clientY, w0, pw };
+  document.body.style.cursor = handleCursor(handle);
+}
+// —— 画布内双击文本进入编辑（默认单击=拖动，双击=改文本）——
+function startTextEdit(node, txt) {
+  if (editingId === node.id) return;                          // 已在编辑本节点
+  if (editingId && editingId !== node.id) commitTextEdit(findNode(root, editingId), null);
+  if (!isSelected(node.id)) selectOne(node.id, false);        // 可能触发重渲染；此刻 editingId 尚未置位，旧元素 blur 不会误提交
+  editingId = node.id;
+  const el = document.querySelector(`.node[data-id="${node.id}"] [data-role="text"]`) || txt;
+  if (!el) return;
+  el.contentEditable = "true";
+  el.style.userSelect = "text";
+  el.style.outline = "2px solid #7fc0ff";
+  el.style.background = "rgba(127,192,255,.18)";
+  el.style.cursor = "text";
+  el.focus();
+  requestAnimationFrame(() => { if (editingId === node.id) try { el.focus(); } catch (e) {} });  // 内嵌环境焦点可能未进，下一帧重试
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  const s = window.getSelection();
+  s.removeAllRanges(); s.addRange(r);
+  el.onkeydown = e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); el.blur(); }        // 回车提交（Shift+回车换行）
+    else if (e.key === "Escape") { e.preventDefault(); el.textContent = (node.text && node.text.content) || ""; el.blur(); }
+  };
+  el.onblur = () => commitTextEdit(node, el);
+}
+function commitTextEdit(node, txt) {
+  if (!editingId || (node && editingId !== node.id)) return;
+  const id = editingId; editingId = null;
+  const n = node || findNode(root, id);
+  if (!n) return;
+  const el = document.querySelector(`.node[data-id="${id}"] [data-role="text"]`);
+  const t = el || txt;
+  const v = t ? t.textContent : (n.text && n.text.content) || "";
+  if (n.text) {
+    if (n.text.content !== v) pushUndo();   // 先记录修改前状态，保证 Ctrl+Z 可撤销文本修改
+    n.text.content = v;
+  }
+  if (t) { t.contentEditable = "false"; t.style.userSelect = ""; t.style.outline = ""; t.style.background = ""; t.style.cursor = ""; t.onkeydown = null; t.onblur = null; }
+  render();
+}
+// 画布拖拽 = 仅在同一父级内重新定位（不自动进组/出组）。
+// 进组/出组（reparent）只能在左侧层级栏里拖拽完成——这是刻意的设计，避免画布拖动误把节点扯出分组。
+document.addEventListener("mousemove", ev => {
+  // —— 缩放手柄拖拽：边=自由拉伸单轴，角=等比例缩放（固定对角）——
+  if (resizing) {
+    const node = findNode(root, resizing.id); if (!node) return;
+    const box = $("canvasBox");
+    const scale = box.clientWidth / designW;
+    const dx = (ev.clientX - resizing.startMX) / scale;     // 世界 x 向右为正
+    const dy = -(ev.clientY - resizing.startMY) / scale;    // 世界 y 向上为正
+    const W = resizing.w0, h = resizing.handle;
+    let nx = W.x, ny = W.y, nw = W.w, nh = W.h;
+    if (h.includes("e")) nw = W.w + dx;
+    if (h.includes("w")) { nx = W.x + dx; nw = W.w - dx; }
+    if (h.includes("n")) nh = W.h + dy;                       // 顶边（世界 y 朝上）
+    if (h.includes("s")) { ny = W.y + dy; nh = W.h - dy; }    // 底边
+    if (h.length === 2) {                                     // 角：等比例缩放，固定对角
+      const f = Math.abs(dx) >= Math.abs(dy) ? (nw / W.w) : (nh / W.h);
+      nw = W.w * f; nh = W.h * f;
+      if (h.includes("w")) nx = (W.x + W.w) - nw; else nx = W.x;   // 含 w（左）→ 右角固定；否则左角固定
+      if (h.includes("n")) ny = W.y; else ny = (W.y + W.h) - nh;   // 含 n（上）→ 底角固定；否则顶角固定
+    }
+    nw = Math.max(4, Math.round(nw)); nh = Math.max(4, Math.round(nh));
+    remapRectToParent(node, { x: nx, y: ny, w: nw, h: nh }, resizing.pw);
+    renderCanvas(); renderProps();
+    return;
+  }
+  if (!drag) return;
+  const node = findNode(root, drag.id); if (!node) return;
+  if (!drag.pushed) { drag.pushed = true; pushUndo(); }   // 第一次实际移动前记录一次（点击未拖动不入栈）
+  const box = $("canvasBox");
+  const scale = box.clientWidth / designW;
+  const dx = (ev.clientX - drag.startMX) / scale, dy = -(ev.clientY - drag.startMY) / scale;
+  drag.ids.forEach((id, i) => {
+    const n = findNode(root, id); if (!n) return;
+    n.rect.pos = [drag.orig[i][0] + dx, drag.orig[i][1] + dy];
+  });
+  if (node.id === selectedId || selectedSet.has(node.id)) { renderCanvas(); renderProps(); }
+});
+document.addEventListener("mouseup", () => {
+  if (resizing) { resizing = null; document.body.style.cursor = ""; return; }
+  if (drag) {
+    if (drag.pushed) {
+      lastClickId = null; lastClickT = 0;   // 真发生了拖动：清掉双击计数，避免被误判为双击进入编辑
+      drag = null; document.body.style.cursor = ""; render();
+    } else {
+      // 纯点击（未拖动）：选择已在 mousedown 时用 renderSelection 更新，这里不再重建画布，
+      // 否则画布节点被替换，第二次 mousedown 接不到同一元素，导致双击无法进入编辑（WorkBuddy 内嵌环境尤甚）
+      drag = null; document.body.style.cursor = "";
+    }
+  }
+});
+// 双击文本进入编辑（原生 dblclick 备份路径；挂在稳定父级 canvasWrap 上，不受画布重渲染影响）
+const _cw = $("canvasWrap") || $("canvasBox");
+if (_cw) _cw.addEventListener("dblclick", e => {
+  const ne = e.target.closest(".node"); if (!ne) return;
+  if (e.target.closest(".resize-handle")) return;   // 双击手柄不触发文本编辑
+  const node = findNode(root, ne.dataset.id);
+  if (node && node.type === "text" && !node.locked && editingId !== node.id) {
+    const txt = ne.querySelector('[data-role="text"]');
+    startTextEdit(node, txt);
+  }
+});
+
+/* ---------------- 模式 / 比例 / 添加 ---------------- */
+document.querySelectorAll("#modeTabs .nav-link").forEach(a => {
+  a.addEventListener("click", ev => {
+    ev.preventDefault();
+    currentMode = a.dataset.mode;
+    document.querySelectorAll("#modeTabs .nav-link").forEach(x => x.classList.toggle("active", x === a));
+    // 美术模式下「策划包（仅布局）」不含素材，禁用该导出项，避免素材在导出时丢失
+    const lay = document.getElementById("btnExportLayout");
+    if (lay) lay.style.display = (currentMode === "decor") ? "none" : "";
+    render();
+  });
+});
+document.querySelectorAll("#ratioMenu a").forEach(a => {
+  a.addEventListener("click", ev => {
+    ev.preventDefault();
+    const [w, h] = a.dataset.wh.split(",").map(Number);
+    designW = w; designH = h;
+    render();
+  });
+});
+document.querySelectorAll("[data-add]").forEach(a => {
+  a.addEventListener("click", ev => {
+    ev.preventDefault();
+    addToSelected(a.dataset.add);
+  });
+});
+function addToSelected(type) {
+  const parent = selectedId ? findNode(root, selectedId) : root;
+  if (!parent) return;
+  pushUndo();
+  const node = makeNode(type === "panel" ? "Panel" : type === "button" ? "Btn" : type === "text" ? "Text" : "Img", type, {
+    anchorMin: [0.5, 0.5], anchorMax: [0.5, 0.5], pivot: [0.5, 0.5], pos: [0, 0],
+    size: type === "panel" ? [200, 120] : type === "button" ? [180, 56] : [160, 30],
+  });
+  parent.children.push(node);
+  setMainSelected(node.id);
+  render();
+}
+
+/* ---------------- 类型切换（每种类型自动补齐默认属性） ---------------- */
+// 每种类型的默认外观（切换类型后节点应呈现的样子）
+function defaultForType(t) {
+  if (t === "button") return {
+    style: { color: "#ff7a5c", sprite: "pill", shadow: true, raycast: true, bgImage: "", fit: "cover" },
+    text:  { content: "按钮", fontSize: 20, color: "#ffffff", align: "middle-center", bold: true, lineSpacing: 1.25 },
+  };
+  if (t === "panel") return {
+    style: { color: "#3b4456", sprite: "round", shadow: false, raycast: false, bgImage: "", fit: "cover" },
+  };
+  if (t === "text") return {
+    text: { content: "文本", fontSize: 16, color: "#ffffff", align: "middle-center", bold: false, lineSpacing: 1.25 },
+  };
+  if (t === "image") return {
+    style: { color: "#3b4456", sprite: "none", shadow: false, raycast: false, bgImage: "", fit: "cover" },
+    image: { src: "", fit: "contain", sprite: "none" },
+  };
+  return {};
+}
+function changeType(newType) {
+  const n = findNode(root, selectedId); if (!n || n.type === "canvas") return;
+  if (n.type === newType) return;
+  pushUndo();
+  n.type = newType;
+  // 重置为该类型的默认外观（保留布局位置，使属性面板与视觉同步变成默认类型）
+  const d = defaultForType(newType);
+  n.style = d.style ? JSON.parse(JSON.stringify(d.style)) : { color: "#3b4456", sprite: "round", shadow: false, raycast: false, bgImage: "", fit: "cover" };
+  if (newType === "button" || newType === "text") n.text = JSON.parse(JSON.stringify(d.text));
+  else delete n.text;
+  if (newType === "image") n.image = JSON.parse(JSON.stringify(d.image));
+  else delete n.image;
+  setMainSelected(n.id);
+  render();
+}
+
+/* ---------------- 复制 / 粘贴 ---------------- */
+let clipboard = null;
+function copySelected() {
+  const nodes = selectedNodes().filter(n => n.type !== "canvas");
+  if (!nodes.length) { flashToast("请先选中一个非画布节点"); return; }
+  clipboard = nodes.length === 1 ? JSON.parse(JSON.stringify(nodes[0])) : nodes.map(n => JSON.parse(JSON.stringify(n)));
+  flashToast("已复制 " + nodes.length + " 个节点");
+}
+function cloneWithNewIds(src) {
+  const node = makeNode(src.name, src.type, {});
+  node.rect = JSON.parse(JSON.stringify(src.rect || node.rect));
+  if (src.text) node.text = JSON.parse(JSON.stringify(src.text));
+  if (src.style) node.style = JSON.parse(JSON.stringify(src.style));
+  if (src.image) node.image = JSON.parse(JSON.stringify(src.image));
+  if (src.locked) node.locked = src.locked;
+  if (src.hidden) node.hidden = src.hidden;
+  node.children = (src.children || []).map(cloneWithNewIds);
+  return node;
+}
+function pasteNode(toOriginalPos) {
+  if (!clipboard) { flashToast("剪贴板为空，先复制一个节点"); return; }
+  pushUndo();
+  const arr = Array.isArray(clipboard) ? clipboard : [clipboard];
+  const clones = arr.map(c => cloneWithNewIds(c));
+  if (!toOriginalPos) clones.forEach(c => { c.rect.pos[0] += 18; c.rect.pos[1] -= 18; });  // 轻微偏移避免完全重叠
+  const parent = selectedId ? findNode(root, selectedId) : root;
+  if (!parent) return;
+  parent.children.push(...clones);
+  selectedSet.clear();
+  clones.forEach(c => selectedSet.add(c.id));
+  selectedId = clones[0].id;
+  render();
+  flashToast("已粘贴 " + clones.length + " 个节点");
+}
+$("btnCopy").addEventListener("click", copySelected);
+$("btnPaste").addEventListener("click", pasteNode);
+$("btnUndo").addEventListener("click", undo);
+$("btnRedo").addEventListener("click", redo);
+$("btnHotkeys").addEventListener("click", () => { bootstrap.Modal.getOrCreateInstance($("hotkeyModal")).show(); });
+
+/* ---- 通用输入模态（替代 prompt，保证 F2 / Ctrl+F 在任意环境可用） ---- */
+let promptCb = null;
+function uiPrompt(title, def, placeholder, cb) {
+  $("promptTitle").textContent = title;
+  $("promptInput").placeholder = placeholder || "";
+  $("promptInput").value = def || "";
+  promptCb = cb;
+  bootstrap.Modal.getOrCreateInstance($("promptModal")).show();
+  $("promptInput").focus();
+  $("promptInput").select();
+}
+$("promptOk").addEventListener("click", () => {
+  const v = $("promptInput").value;
+  bootstrap.Modal.getInstance($("promptModal")).hide();
+  if (promptCb) { const cb = promptCb; promptCb = null; cb(v); }
+});
+$("promptInput").addEventListener("keydown", ev => { if (ev.key === "Enter") $("promptOk").click(); });
+document.addEventListener("keydown", ev => {
+  const tag = (document.activeElement && document.activeElement.tagName) || "";
+  const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+  const mod = ev.ctrlKey || ev.metaKey;
+  const alt = ev.altKey;
+  const k = ev.key.toLowerCase();
+  // 输入框内：Ctrl+Z/Ctrl+Y 交给浏览器原生（文本撤销）；其余快捷键不拦截
+  if (typing) {
+    if (mod && (k === "z" || k === "y")) return;
+    return;
+  }
+  if (mod && k === "z") { ev.preventDefault(); if (ev.shiftKey) redo(); else undo(); return; }
+  if (mod && k === "y") { ev.preventDefault(); redo(); return; }
+  if (mod && k === "c" && !alt) { copySelected(); ev.preventDefault(); return; }
+  if (mod && k === "v") { ev.preventDefault(); if (ev.shiftKey) pasteNode(true); else pasteNode(); return; }
+  if (mod && k === "d") { duplicateSelected(); ev.preventDefault(); return; }
+  if (mod && k === "s") { ev.preventDefault(); $("btnExportFull").click(); return; }
+  if (mod && k === "a") { ev.preventDefault(); selectAllNodes(); return; }
+  if (mod && k === "g") { ev.preventDefault(); if (ev.shiftKey) ungroupSelected(); else groupSelected(); return; }
+  if (mod && k === "f") { ev.preventDefault(); findAndSelect(); return; }
+  if (mod && k === "k") { ev.preventDefault(); openAIModal(); return; }
+  if (mod && alt && k === "c") { ev.preventDefault(); copyStyle(); return; }
+  if (mod && alt && k === "v") { ev.preventDefault(); pasteStyle(); return; }
+  if (mod && ev.shiftKey && k === "l") { ev.preventDefault(); toggleLock(); return; }
+  if (mod && ev.shiftKey && k === "h") { ev.preventDefault(); toggleHidden(); return; }
+  if (mod && k === "]") { ev.preventDefault(); reorderSelected(1); return; }
+  if (mod && k === "[") { ev.preventDefault(); reorderSelected(-1); return; }
+  if (k === "delete" || k === "backspace") { ev.preventDefault(); deleteSelected(); return; }
+  if (k === "f2") { ev.preventDefault(); renameSelected(); return; }
+  if (k === "f") { ev.preventDefault(); focusSelected(); return; }
+  if (k === "escape") { if (ctxMenuEl) closeCtxMenu(); if (selectedId) { clearSelection(); render(); } return; }
+  // Alt+方向键 = 对齐（同一父级多选）
+  if (alt) {
+    if (k === "arrowleft") { ev.preventDefault(); alignSelected(ev.shiftKey ? "hcenter" : "left"); return; }
+    if (k === "arrowright") { ev.preventDefault(); alignSelected("right"); return; }
+    if (k === "arrowup") { ev.preventDefault(); alignSelected(ev.shiftKey ? "vcenter" : "top"); return; }
+    if (k === "arrowdown") { ev.preventDefault(); alignSelected("bottom"); return; }
+  }
+  // 方向键微调位置：Shift 步进 10px，普通 1px
+  const step = ev.shiftKey ? 10 : 1;
+  if (k === "arrowleft") { ev.preventDefault(); nudgeSelected(-step, 0); return; }
+  if (k === "arrowright") { ev.preventDefault(); nudgeSelected(step, 0); return; }
+  if (k === "arrowup") { ev.preventDefault(); nudgeSelected(0, step); return; }
+  if (k === "arrowdown") { ev.preventDefault(); nudgeSelected(0, -step); return; }
+});
+function reorderSelected(dir) {
+  const node = findNode(root, selectedId);
+  if (!node || node.type === "canvas") { flashToast("请先选中一个节点"); return; }
+  reorderSibling(node, dir);
+}
+function duplicateSelected() {
+  copySelected();
+  pasteNode();
+}
+function renameSelected() {
+  const n = findNode(root, selectedId);
+  if (!n || n.type === "canvas") { flashToast("请先选中一个节点"); return; }
+  uiPrompt("重命名节点", n.name, "节点名称", v => { if (v && v.trim()) renameNode(v.trim()); });
+}
+
+/* ---------------- 模板 ---------------- */
+document.querySelectorAll("[data-tpl]").forEach(a => {
+  a.addEventListener("click", ev => { ev.preventDefault(); loadTemplate(a.dataset.tpl); flashToast("已载入模板：" + a.textContent.trim()); });
+});
+
+/* ---------------- 主题切换（白天 / 夜间） ---------------- */
+let isDark = true;
+$("btnTheme").addEventListener("click", () => {
+  isDark = !isDark;
+  document.body.setAttribute("data-bs-theme", isDark ? "dark" : "light");
+  $("btnTheme").textContent = isDark ? "🌙 夜间" : "☀️ 白天";
+});
+
+/* ---------------- 轻提示 toast ---------------- */
+function flashToast(msg) {
+  let t = $("toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "toast";
+    t.style.cssText = "position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:8px 16px;border-radius:8px;z-index:9999;font-size:13px;pointer-events:none;transition:opacity .3s;";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = "1";
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => { t.style.opacity = "0"; }, 1400);
+}
+
+/* ---------------- 导出 / 导入 ---------------- */
+function serialize(node, mode) {
+  const o = { name: node.name, type: node.type };
+  if (node.id) o.id = node.id;        // 稳定 id：供 Unity 增量重导入时按 id 匹配（保留手动修改）
+  if (node.locked) o.locked = true;   // 锁定（编辑器概念）
+  if (node.hidden) o.hidden = true;   // 隐藏 → Unity SetActive(false)
+  if (mode === "layout" || mode === "full") o.rect = node.rect;
+  if (node.text && (mode === "layout" || mode === "full" || node.type === "text")) o.text = node.text;
+  if (mode === "decor" || mode === "full") {
+    if (node.style) o.style = node.style;
+    if (node.image) o.image = node.image;
+    // 美术包：位置覆盖（仅当美术动过布局）
+    if (mode === "decor" && layoutSnapshot.has(node.id)) {
+      const snap = layoutSnapshot.get(node.id);
+      if (snap !== JSON.stringify(node.rect)) o.layoutOverride = node.rect;
+    }
+  }
+  if (node.type === "button" && node.onClick && node.onClick.length) o.onClick = node.onClick;  // 透传按钮 onClick（Unity 回写）
+  o.children = node.children.map(c => serialize(c, mode));
+  return o;
+}
+function buildExport(mode) {
+  const d = docs[activeDoc];
+  return {
+    format: "ui-builder",
+    version: 2,
+    docId: d ? d.id : "",
+    docName: d ? d.name : "UI_Builder",
+    meta: { screenWidth: designW, screenHeight: designH, exportMode: mode, exportedAt: new Date().toISOString() },
+    tree: root.children.map(c => serialize(c, mode)),
+  };
+}
+
+/* ---- 模态框 ---- */
+let isImportMode = false;
+function openModal(title, tip, json, extra) {
+  $("modalTitle").textContent = title;
+  $("modalTip").innerHTML = tip;
+  $("modalCode").value = json ? JSON.stringify(json, null, 2) : "";
+  $("modalExtra").innerHTML = extra || "";
+  $("modalDownload").style.display = "";
+  $("modalCopy").style.display = "";
+  $("modalFileBtn").style.display = "none";
+  $("modalAction").textContent = "关闭";
+  isImportMode = false;
+  if (!modal) modal = new bootstrap.Modal($("jsonModal"));
+  modal.show();
+}
+function closeModal() { if (modal) modal.hide(); }
+$("modalAction").addEventListener("click", () => { if (isImportMode) doImport(); else closeModal(); });
+$("modalCopy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("modalCode").value); $("modalCopy").textContent = "✓ 已复制"; setTimeout(() => $("modalCopy").textContent = "复制", 1200); }
+  catch { $("modalCode").select(); document.execCommand("copy"); }
+});
+$("modalDownload").addEventListener("click", () => {
+  const blob = new Blob([$("modalCode").value], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${safeName((docs[activeDoc] && docs[activeDoc].name) || "ui")}_${window._modalMode || "full"}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+});
+
+/* ---- 整包导出（UI JSON + 素材，store-zip） ---- */
+const _crcTable = (function () {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function _crc32(buf) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) c = (c >>> 8) ^ _crcTable[(c ^ buf[i]) & 0xff];
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function _u16(v) { const b = new Uint8Array(2); new DataView(b.buffer).setUint16(0, v, true); return b; }
+function _u32(v) { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, v >>> 0, true); return b; }
+function _dataURLToBytes(dataURL) {
+  if (!dataURL || dataURL.indexOf("data:image") !== 0) return null;
+  const comma = dataURL.indexOf(",");
+  if (comma < 0) return null;
+  const bin = atob(dataURL.substring(comma + 1));
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+function _buildZip(files) {
+  const enc = new TextEncoder();
+  const chunks = [], central = [];
+  let offset = 0;
+  for (const f of files) {
+    const nameBytes = enc.encode(f.name);
+    const crc = _crc32(f.bytes);
+    const size = f.bytes.length;
+    const local = [
+      _u32(0x04034b50), _u16(20), _u16(0x0800), _u16(0), _u16(0), _u16(0),
+      _u32(crc), _u32(size), _u32(size), _u16(nameBytes.length), _u16(0)
+    ];
+    local.forEach(b => chunks.push(b));
+    chunks.push(nameBytes); chunks.push(f.bytes);
+    const c = [
+      _u32(0x02014b50), _u16(20), _u16(20), _u16(0x0800), _u16(0), _u16(0), _u16(0),
+      _u32(crc), _u32(size), _u32(size), _u16(nameBytes.length), _u16(0), _u16(0), _u16(0), _u16(0),
+      _u32(0), _u32(offset)
+    ];
+    c.forEach(b => central.push(b));
+    central.push(nameBytes);
+    offset += 30 + nameBytes.length + size;
+  }
+  const cdStart = offset;
+  let cdLen = 0; central.forEach(b => cdLen += b.length);
+  const end = [_u32(0x06054b50), _u16(0), _u16(0), _u16(files.length), _u16(files.length), _u32(cdLen), _u32(cdStart), _u16(0)];
+  let total = 0;
+  chunks.forEach(b => total += b.length); central.forEach(b => total += b.length); end.forEach(b => total += b.length);
+  const out = new Uint8Array(total);
+  let p = 0; const put = b => { out.set(b, p); p += b.length; };
+  chunks.forEach(put); central.forEach(put); end.forEach(put);
+  return out;
+}
+function exportPackage() {
+  if (!root.children.length) { flashToast("画布为空，无可导出内容"); return; }
+  const taken = new Set(), files = [], finalName = new Map();
+  function takeName(suggest) {
+    let base = (suggest || "asset.png").replace(/^.*[\\/]/, "");
+    if (!/\.(png|jpe?g|webp|gif)$/i.test(base)) base += ".png";
+    let name = base, i = 1;
+    while (taken.has(name)) { const dot = base.lastIndexOf("."); name = base.slice(0, dot) + "_" + i + base.slice(dot); i++; }
+    taken.add(name); return name;
+  }
+  (function scan(node) {
+    if (node.image && node.image.data) {
+      const raw = _dataURLToBytes(node.image.data);
+      if (raw) { const name = takeName(node.image.src || (node.name + ".png")); finalName.set(node, "img:" + name); files.push({ name, bytes: raw }); }
+    }
+    if (node.style && node.style.bgImageData) {
+      const raw = _dataURLToBytes(node.style.bgImageData);
+      if (raw) { const name = takeName(node.style.bgImage || (node.name + "_bg.png")); finalName.set(node, "bg:" + name); files.push({ name, bytes: raw }); }
+    }
+    (node.children || []).forEach(scan);
+  })({ children: root.children });
+  const meta = { screenWidth: designW, screenHeight: designH, exportMode: "package", packaged: true, assetCount: files.length, exportedAt: new Date().toISOString() };
+  const tree = root.children.map(c => {
+    const o = serialize(c, "full");
+    if (o.image && finalName.get(c) && finalName.get(c).indexOf("img:") === 0) { o.image.src = finalName.get(c).slice(4); delete o.image.data; }
+    if (o.style && finalName.get(c) && finalName.get(c).indexOf("bg:") === 0) { o.style.bgImage = finalName.get(c).slice(3); delete o.style.bgImageData; }
+    return o;
+  });
+  const j = { format: "ui-builder", version: 2, meta,
+    docId: docs[activeDoc] ? docs[activeDoc].id : "", docName: docs[activeDoc] ? docs[activeDoc].name : "UI_Builder", tree };
+  const jsonBytes = new TextEncoder().encode(JSON.stringify(j, null, 2));
+  const zipFiles = [{ name: "ui.json", bytes: jsonBytes }];
+  files.forEach(f => zipFiles.push({ name: "images/" + f.name, bytes: f.bytes }));
+  const zip = _buildZip(zipFiles);
+  const blob = new Blob([zip], { type: "application/zip" });
+  const dn = (docs[activeDoc] && docs[activeDoc].name) || "ui";
+  const fn = `${safeName(dn)}_package_${designW}x${designH}.uipack`;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = fn;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  flashToast(`已导出整包：${fn}（含 ${files.length} 个素材）`);
+}
+
+/* ---- 导出入口 ---- */
+$("btnExportLayout").addEventListener("click", ev => {
+  ev.preventDefault();
+  const j = buildExport("layout"); window._modalMode = "layout";
+  openModal("导出 · 策划包（layout）",
+    "仅含<b>布局与文本</b>，不含视觉。发给美术：美术在网页<b>导入 → 切美术模式</b>做装饰。<br>程序不能直接用此包落地。",
+    j, "流向：<code>策划</code> 导出策划包 → <code>美术</code> 网页导入装饰 → <code>程序</code> 用完整包");
+});
+$("btnExportDecor").addEventListener("click", ev => {
+  ev.preventDefault();
+  const j = buildExport("decor"); window._modalMode = "decor";
+  const overrides = countOverrides(j.tree);
+  openModal("导出 · 美术包（decoration）",
+    "含<b>美术视觉 + 位置覆盖</b>（美术移动过的节点会附带 <code>layoutOverride</code>，按节点路径与布局包合并）。",
+    j, `当前含 <b>${overrides}</b> 个位置覆盖节点。推荐直接走「完整包」更简单。`);
+});
+$("btnExportFull").addEventListener("click", ev => {
+  ev.preventDefault();
+  const j = buildExport("full"); window._modalMode = "full";
+  openModal("导出 · 完整包（full）",
+    "布局 + 美术视觉合并后的完整数据。<b>程序直接导入 Unity</b>（<code>UnityImporter/UIBuilderImporter.cs</code>），自动生成 prefab。",
+    j, "Unity 端：菜单 <code>UI Builder / Import from JSON</code> 选择此文件");
+});
+$("btnExportPack").addEventListener("click", ev => {
+  ev.preventDefault();
+  exportPackage();
+});
+/* ---- 多文档 / 标签页按钮 ---- */
+$("btnDocAdd").addEventListener("click", newDoc);
+$("btnDocSave").addEventListener("click", () => saveDocFile(activeDoc));
+$("btnDocSaveAs").addEventListener("click", () => { const n = prompt("另存为文件名：", docs[activeDoc].name); if (n != null) { renameDoc(activeDoc, (n.trim() || docs[activeDoc].name)); saveDocFile(activeDoc); } });
+$("btnDocRename").addEventListener("click", () => renameDocPrompt(activeDoc));
+$("btnDocClose").addEventListener("click", () => closeDoc(activeDoc));
+$("btnDocOpen").addEventListener("click", () => $("docFileInput").click());
+$("docFileInput").addEventListener("change", ev => { const f = ev.target.files && ev.target.files[0]; if (f) openDocFile(f); ev.target.value = ""; });
+// Ctrl+Shift+N 新建一套 UI
+document.addEventListener("keydown", ev => {
+  if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && (ev.key === "N" || ev.key === "n")) { ev.preventDefault(); newDoc(); }
+});
+
+function countOverrides(nodes) {
+  let k = 0;
+  for (const n of nodes) { if (n.layoutOverride) k++; k += countOverrides(n.children || []); }
+  return k;
+}
+
+/* ---- 导入入口 ---- */
+$("btnImport").addEventListener("click", () => {
+  openModal("导入 JSON", "粘贴 <code>ui-builder</code> 格式 JSON，或点 <b>📁 选择文件</b> 直接选 .json（策划包/美术包/完整包均可）。导入会<b>替换当前场景</b>。");
+  isImportMode = true;
+  $("modalAction").textContent = "导入并替换";
+  $("modalDownload").style.display = "none";
+  $("modalCopy").style.display = "none";
+  $("modalFileBtn").style.display = "";
+  $("modalCode").placeholder = "粘贴 ui-builder JSON，或选择文件…";
+  $("modalCode").focus();
+});
+$("modalFileBtn").addEventListener("click", () => $("fileInput").click());
+$("fileInput").addEventListener("change", ev => {
+  const f = ev.target.files && ev.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { $("modalCode").value = String(r.result); flashToast("已载入文件：" + f.name); };
+  r.readAsText(f);
+  ev.target.value = "";
+});
+function doImport() {
+  try {
+    const data = JSON.parse($("modalCode").value);
+    if (data.format !== "ui-builder") throw new Error("缺少 format: ui-builder");
+    pushUndo();
+    root.children = data.tree.map(n => revive(n));
+    if (data.meta && data.meta.screenWidth) {
+      designW = data.meta.screenWidth; designH = data.meta.screenHeight;
+    }
+    // 记录布局快照：用于美术包输出位置覆盖（仅导入布局类数据时有意义）
+    layoutSnapshot.clear();
+    const record = n => { layoutSnapshot.set(n.id, JSON.stringify(n.rect)); n.children.forEach(record); };
+    root.children.forEach(record);
+    clearSelection();
+    render();
+    closeModal();
+  } catch (e) {
+    alert("导入失败：" + e.message);
+  }
+}
+function revive(n) {
+  const node = makeNode(n.name, n.type, {});
+  if (n.id) node.id = n.id;   // 保留网页导出/Unity 回写的稳定 id，供增量重导入与差异视图按 id 匹配
+  node.rect = JSON.parse(JSON.stringify(n.rect || node.rect));
+  if (n.text) node.text = JSON.parse(JSON.stringify(n.text));
+  if (n.style) node.style = JSON.parse(JSON.stringify(n.style));
+  if (n.image) node.image = JSON.parse(JSON.stringify(n.image));
+  if (n.locked) node.locked = true;
+  if (n.hidden) node.hidden = true;
+  if (n.onClick) node.onClick = JSON.parse(JSON.stringify(n.onClick));   // 保留 Unity 回写的按钮 onClick，供再次导出回 Unity
+  node.children = (n.children || []).map(revive);
+  return node;
+}
+
+/* ---------------- 多文档 / 标签页（类 Photoshop） ---------------- */
+let docs = [];          // [{ id, name, root, designW, designH, mode, layoutSnap:[[id,rect],...] }]
+let activeDoc = 0;
+const DOCS_KEY = "UI_BUILDER_DOCS_V1";
+
+function docUid() { return "d" + Math.random().toString(36).slice(2, 10); }
+function makeBlankDoc(name) {
+  const r = makeNode("Canvas", "canvas", {});
+  r.children = buildBlank();
+  return { id: docUid(), name: name || "UI 1", root: r, designW: 720, designH: 1280, mode: "layout", layoutSnap: [] };
+}
+// 把当前活树状态写入 docs[activeDoc]
+function liveToDoc() {
+  const d = docs[activeDoc]; if (!d) return;
+  d.root = root; d.designW = designW; d.designH = designH; d.mode = currentMode;
+  d.layoutSnap = [...layoutSnapshot.entries()];
+}
+// 把某文档载入为活树
+function docToLive(d) {
+  root = d.root; designW = d.designW; designH = d.designH; currentMode = d.mode;
+  layoutSnapshot.clear(); (d.layoutSnap || []).forEach(e => layoutSnapshot.set(e[0], e[1]));
+}
+function syncModeTabs() {
+  document.querySelectorAll("#modeTabs .nav-link").forEach(x => x.classList.toggle("active", x.dataset.mode === currentMode));
+  const lay = document.getElementById("btnExportLayout");
+  if (lay) lay.style.display = (currentMode === "decor") ? "none" : "";
+}
+// 首次启动：优先恢复 localStorage 中的多套 UI，否则把当前已有单套作为第一套
+function initDocs() {
+  try {
+    const raw = localStorage.getItem(DOCS_KEY);
+    if (raw) {
+      const o = JSON.parse(raw);
+      if (o && Array.isArray(o.docs) && o.docs.length) {
+        docs = o.docs.map(d => ({
+          id: d.id || docUid(),
+          name: d.name || "UI",
+          root: reviveTree(d.root),
+          designW: d.designW || 720, designH: d.designH || 1280,
+          mode: d.mode || "layout",
+          layoutSnap: Array.isArray(d.layoutSnap) ? d.layoutSnap : [],
+        }));
+        activeDoc = clamp(o.activeDoc | 0, 0, docs.length - 1);
+        docToLive(docs[activeDoc]);
+        syncModeTabs(); renderDocBar(); return;
+      }
+    }
+  } catch (e) {}
+  docs = [{ id: docUid(), name: "UI 1", root, designW, designH, mode: currentMode, layoutSnap: [...layoutSnapshot.entries()] }];
+  activeDoc = 0; renderDocBar();
+}
+function reviveTree(rootLike) {
+  const r = makeNode("Canvas", "canvas", {});
+  r.children = (rootLike && rootLike.children || []).map(revive);
+  return r;
+}
+function renderDocBar() {
+  const bar = $("docTabs"); if (!bar) return;
+  bar.innerHTML = "";
+  docs.forEach((d, i) => {
+    const t = document.createElement("div");
+    t.className = "doc-tab" + (i === activeDoc ? " active" : "");
+    const label = document.createElement("span");
+    label.textContent = d.name;
+    label.ondblclick = ev => { ev.preventDefault(); renameDocPrompt(i); };
+    const x = document.createElement("span");
+    x.className = "x"; x.textContent = "×"; x.title = "关闭此套 UI";
+    x.onclick = ev => { ev.stopPropagation(); closeDoc(i); };
+    t.appendChild(label); t.appendChild(x);
+    t.onclick = () => switchDoc(i);
+    bar.appendChild(t);
+  });
+}
+function switchDoc(i) {
+  if (i < 0 || i >= docs.length || i === activeDoc) return;
+  liveToDoc();
+  activeDoc = i; docToLive(docs[i]);
+  undoStack.length = 0; redoStack.length = 0; syncHistoryBtns();
+  clearSelection(); syncModeTabs(); renderDocBar(); render();
+  scheduleAutosave();
+}
+function newDoc() {
+  liveToDoc();
+  docs.push(makeBlankDoc("UI " + (docs.length + 1)));
+  activeDoc = docs.length - 1; docToLive(docs[activeDoc]);
+  undoStack.length = 0; redoStack.length = 0; syncHistoryBtns();
+  clearSelection(); syncModeTabs(); renderDocBar(); render();
+  flashToast("已新建 UI：" + docs[activeDoc].name); scheduleAutosave();
+}
+function closeDoc(i) {
+  if (docs.length <= 1) { flashToast("至少保留一套 UI"); return; }
+  const wasActive = (i === activeDoc);
+  docs.splice(i, 1);
+  if (wasActive) {
+    activeDoc = Math.min(i, docs.length - 1);
+    docToLive(docs[activeDoc]);
+    undoStack.length = 0; redoStack.length = 0; syncHistoryBtns();
+    clearSelection(); syncModeTabs();
+  }
+  renderDocBar(); render(); flashToast("已关闭 UI"); scheduleAutosave();
+}
+function renameDocPrompt(i) {
+  const name = prompt("重命名这套 UI（将作为 Unity 中的 GameObject 名称）：", docs[i].name);
+  if (name == null) return;
+  renameDoc(i, (name.trim() || docs[i].name));
+}
+function renameDoc(i, name) {
+  docs[i].name = name; renderDocBar(); scheduleAutosave();
+}
+// ---- 文档文件（.uib）存取 ----
+function safeName(s) { return (s || "ui").replace(/[\\/:*?"<>|]+/g, "_").trim().slice(0, 60) || "ui"; }
+function docFileJSON(i) {
+  const d = docs[i];
+  return {
+    format: "ui-builder-doc", version: 1,
+    docId: d.id, docName: d.name,
+    screenWidth: d.designW, screenHeight: d.designH, mode: d.mode,
+    exportedAt: new Date().toISOString(),
+    tree: d.root.children.map(c => serialize(c, "full")),
+  };
+}
+function saveDocFile(i) {
+  const d = docs[i];
+  const blob = new Blob([JSON.stringify(docFileJSON(i), null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = safeName(d.name) + ".uib";
+  a.click(); URL.revokeObjectURL(a.href);
+  flashToast("已保存：" + safeName(d.name) + ".uib");
+}
+function openDocFile(file) {
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const data = JSON.parse(String(r.result));
+      let doc;
+      if (data.format === "ui-builder-doc" || data.format === "ui-builder") {
+        doc = {
+          id: data.docId || docUid(),
+          name: data.docName || ("UI " + (docs.length + 1)),
+          root: reviveTree({ children: data.tree || [] }),
+          designW: data.screenWidth || (data.meta ? data.meta.screenWidth : 720),
+          designH: data.screenHeight || (data.meta ? data.meta.screenHeight : 1280),
+          mode: data.mode || (data.meta ? data.meta.exportMode : "layout"),
+          layoutSnap: [],
+        };
+      } else { alert("不是 ui-builder 文档（缺少 format 字段）"); return; }
+      liveToDoc();
+      docs.push(doc); activeDoc = docs.length - 1; docToLive(doc);
+      undoStack.length = 0; redoStack.length = 0; syncHistoryBtns();
+      clearSelection(); syncModeTabs(); renderDocBar(); render();
+      flashToast("已打开：" + doc.name); scheduleAutosave();
+    } catch (e) { alert("打开失败：" + e.message); }
+  };
+  r.readAsText(file);
+}
+// ---- 自动保存（防丢当前编辑，刷新/误关可恢复） ----
+let _autosaveT = null;
+function scheduleAutosave() {
+  if (_autosaveT) clearTimeout(_autosaveT);
+  _autosaveT = setTimeout(autosaveDocs, 600);
+}
+function autosaveDocs() {
+  liveToDoc();
+  try {
+    const payload = {
+      activeDoc,
+      docs: docs.map(d => ({
+        id: d.id, name: d.name, designW: d.designW, designH: d.designH, mode: d.mode,
+        layoutSnap: d.layoutSnap,
+        root: { children: d.root.children.map(c => serialize(c, "full")) },
+      })),
+    };
+    localStorage.setItem(DOCS_KEY, JSON.stringify(payload));
+  } catch (e) { /* 配额超限（如超大内嵌图）则忽略自动保存，请改用「💾 保存」导出 .uib */ }
+}
+
+/* ---------------- 空白点击取消选中 ---------------- */
+document.addEventListener("mousedown", ev => {
+  if (ev.button === 2) return;   // 右键不取消选中（交给上下文菜单）
+  if (selectedId && !ev.target.closest("#props") && !ev.target.closest("#tree") && !ev.target.closest(".navbar") && !ev.target.closest(".ctx-menu")) {
+    clearSelection(); render();
+  }
+});
+
+/* ---------------- 可拖拽分隔条（调整侧栏宽度） ---------------- */
+function initResizer(resEl, sideEl, dir) {
+  resEl.addEventListener("mousedown", ev => {
+    ev.preventDefault(); ev.stopPropagation();
+    const startX = ev.clientX;
+    const startW = sideEl.getBoundingClientRect().width;
+    resEl.classList.add("active");
+    document.body.style.cursor = "col-resize";
+    function onMove(e) {
+      let w = startW + (e.clientX - startX) * dir;
+      w = clamp(w, 160, 480);
+      sideEl.style.width = w + "px";
+      renderCanvas();   // 拖拽时画布实时跟着缩放，始终完整露出
+    }
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      resEl.classList.remove("active");
+      document.body.style.cursor = "";
+      render();
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  });
+}
+initResizer($("resLeft"), $("sideLeft"), 1);
+initResizer($("resRight"), $("sideRight"), -1);
+window.addEventListener("resize", renderCanvas);
+
+/* ---------------- 右键上下文菜单 ---------------- */
+let ctxMenuEl = null;
+function closeCtxMenu() {
+  if (ctxMenuEl) { ctxMenuEl.remove(); ctxMenuEl = null; }
+  document.removeEventListener("mousedown", ctxOutside, true);
+}
+function buildCtxItems(container, items) {
+  for (const it of items) {
+    if (it.sep) { const s = document.createElement("div"); s.className = "ctx-sep"; container.appendChild(s); continue; }
+    const row = document.createElement("div");
+    row.className = "ctx-item" + (it.danger ? " danger" : "") + (it.submenu ? " has-sub" : "");
+    const lab = document.createElement("span"); lab.textContent = it.label; row.appendChild(lab);
+    if (it.submenu) { const ar = document.createElement("span"); ar.className = "ar"; ar.textContent = "▸"; row.appendChild(ar); }
+    if (it.submenu) {
+      const sub = document.createElement("div"); sub.className = "ctx-submenu"; buildCtxItems(sub, it.submenu); row.appendChild(sub);
+    } else if (it.action) {
+      row.addEventListener("click", ev => { ev.stopPropagation(); closeCtxMenu(); it.action(); });
+    }
+    container.appendChild(row);
+  }
+}
+function openCtxMenu(x, y, items) {
+  closeCtxMenu();
+  const menu = document.createElement("div");
+  menu.className = "ctx-menu";
+  buildCtxItems(menu, items);
+  document.body.appendChild(menu);
+  const r = menu.getBoundingClientRect();
+  let px = x, py = y;
+  if (px + r.width > window.innerWidth - 8) px = window.innerWidth - r.width - 8;
+  if (py + r.height > window.innerHeight - 8) py = window.innerHeight - r.height - 8;
+  menu.style.left = Math.max(8, px) + "px";
+  menu.style.top = Math.max(8, py) + "px";
+  ctxMenuEl = menu;
+  setTimeout(() => document.addEventListener("mousedown", ctxOutside, true), 0);
+}
+function ctxOutside(e) { if (ctxMenuEl && !ctxMenuEl.contains(e.target)) closeCtxMenu(); }
+document.addEventListener("scroll", () => closeCtxMenu(), true);
+document.addEventListener("contextmenu", () => closeCtxMenu());   // 在空白/导航处右键，关掉旧菜单（自定义区域已 stopPropagation，不会误关）
+
+function ctxNewSubmenu(fn) {
+  return [["panel","面板"],["button","按钮"],["text","文本"],["image","图片"]]
+    .map(([t, l]) => ({ label: "＋ " + l, action: () => fn(t) }));
+}
+const ALIGN_ITEMS = [
+  { label: "左对齐 (Alt+←)",   action: () => alignSelected("left") },
+  { label: "水平居中 (Alt+Shift+←)", action: () => alignSelected("hcenter") },
+  { label: "右对齐 (Alt+→)",   action: () => alignSelected("right") },
+  { label: "顶对齐 (Alt+↑)",   action: () => alignSelected("top") },
+  { label: "垂直居中 (Alt+Shift+↑)", action: () => alignSelected("vcenter") },
+  { label: "底对齐 (Alt+↓)",   action: () => alignSelected("bottom") },
+];
+function ctxItemsForNode(node) {
+  const items = [];
+  const isCanvas = node.type === "canvas";
+  if (selectedSet.size > 1) {
+    // —— 多选批量菜单 ——
+    items.push({ label: "⧉ 复制（多选）", action: () => copySelected() });
+    items.push({ label: "⏫ 对齐", submenu: ALIGN_ITEMS });
+    items.push({ label: "🔒 锁定 / 解锁", action: () => toggleLock() });
+    items.push({ label: "🙈 隐藏 / 显示", action: () => toggleHidden() });
+    items.push({ sep: true });
+    items.push({ label: "➕ 组合 (Ctrl+G)", action: () => groupSelected() });
+    items.push({ label: "✂️ 取消组合 (Ctrl+Shift+G)", action: () => ungroupSelected() });
+    items.push({ sep: true });
+    items.push({ label: "🗑 删除选中 (Del)", danger: true, action: () => deleteSelected() });
+    return items;
+  }
+  items.push({ label: "➕ 新建子元素", submenu: ctxNewSubmenu(t => addChild(node, t)) });
+  if (!isCanvas) {
+    items.push({ label: "在同级之后新建", submenu: ctxNewSubmenu(t => addSibling(node, t)) });
+    items.push({ sep: true });
+    items.push({ label: "复制 (Ctrl+C)", action: () => { setMainSelected(node.id); copySelected(); } });
+    items.push({ label: "粘贴 (Ctrl+V)", action: () => { setMainSelected(node.id); pasteNode(); } });
+    items.push({ sep: true });
+    items.push({ label: "⏫ 层级优先级", submenu: [
+      { label: "置顶（显示最前）", action: () => reorderToEdge(node, true) },
+      { label: "上移一层（更靠前）", action: () => reorderSibling(node, 1) },
+      { label: "下移一层（更靠后）", action: () => reorderSibling(node, -1) },
+      { label: "置底（显示最后）", action: () => reorderToEdge(node, false) },
+    ] });
+    items.push({ label: "🎨 复制样式 (Ctrl+Alt+C)", action: () => { setMainSelected(node.id); copyStyle(); } });
+    items.push({ label: "🎨 粘贴样式 (Ctrl+Alt+V)", action: () => { setMainSelected(node.id); pasteStyle(); } });
+    items.push({ label: "🔒 锁定 (Ctrl+Shift+L)", action: () => { setMainSelected(node.id); toggleLock(); } });
+    items.push({ label: "🙈 隐藏 (Ctrl+Shift+H)", action: () => { setMainSelected(node.id); toggleHidden(); } });
+    if (node.type === "panel" && node.children.length) items.push({ label: "✂️ 取消组合 (Ctrl+Shift+G)", action: () => { setMainSelected(node.id); ungroupSelected(); } });
+    items.push({ sep: true });
+    items.push({ label: "删除节点 (Del)", danger: true, action: () => { setMainSelected(node.id); deleteSelected(); } });
+  } else {
+    items.push({ label: "粘贴 (Ctrl+V)", action: () => { setMainSelected(node.id); pasteNode(); } });
+  }
+  return items;
+}
+function openCtxMenuForNode(node, x, y) { openCtxMenu(x, y, ctxItemsForNode(node)); }
+
+/* 在节点下新建子元素 / 在同级之后新建 */
+function addChild(parentNode, type) {
+  pushUndo();
+  const node = makeNode(nameForType(type), type, {
+    anchorMin: [0.5, 0.5], anchorMax: [0.5, 0.5], pivot: [0.5, 0.5], pos: [0, 0],
+    size: sizeForType(type),
+  });
+  parentNode.children.push(node);
+  setMainSelected(node.id); render();
+}
+function addSibling(node, type) {
+  const parent = findParent(root, node.id); if (!parent) return;
+  pushUndo();
+  const idx = parent.children.findIndex(c => c.id === node.id);
+  const newNode = makeNode(nameForType(type), type, {
+    anchorMin: [0.5, 0.5], anchorMax: [0.5, 0.5], pivot: [0.5, 0.5], pos: [0, 0],
+    size: sizeForType(type),
+  });
+  parent.children.splice(idx + 1, 0, newNode);
+  setMainSelected(newNode.id); render();
+}
+function nameForType(t) { return t === "panel" ? "Panel" : t === "button" ? "Btn" : t === "text" ? "Text" : "Img"; }
+function sizeForType(t) { return t === "panel" ? [200, 120] : t === "button" ? [180, 56] : t === "text" ? [160, 30] : [160, 120]; }
+
+/* ---------------- 层级优先级 / 拖拽排序 ---------------- */
+// Unity uGUI 中：同级越靠后（越靠下）的节点渲染越靠上。本工具以 children 数组顺序
+// 表示层级，导入 Unity 时按数组顺序创建 GameObject，兄弟顺序天然一一对应。
+function isDescendant(node, id) {
+  if (node.id === id) return true;
+  return node.children.some(c => isDescendant(c, id));
+}
+// 把节点 rect 重新换算到新父物体坐标系，保持世界位置/尺寸不变。
+// 保持 anchorMin/anchorMax/pivot 不变，仅反推 size 与 pos（对应 uGUI 的
+// SetParent(parent, worldPositionStays:true)）。
+function remapRectToParent(node, world, parentRect) {
+  const r = node.rect;
+  const spanX = (r.anchorMax[0] - r.anchorMin[0]) * parentRect.w;
+  const spanY = (r.anchorMax[1] - r.anchorMin[1]) * parentRect.h;
+  r.size[0] = Math.round(world.w - spanX);
+  r.size[1] = Math.round(world.h - spanY);
+  const anchorX = parentRect.x + r.anchorMin[0] * parentRect.w;
+  const anchorY = parentRect.y + r.anchorMin[1] * parentRect.h;
+  const offX = spanX * r.pivot[0];
+  const offY = spanY * r.pivot[1];
+  r.pos[0] = Math.round(world.x - anchorX - offX + world.w * r.pivot[0]);
+  r.pos[1] = Math.round(world.y - anchorY - offY + world.h * r.pivot[1]);
+}
+function moveNodeTo(dragNode, targetNode, position) {
+  if (!dragNode || !targetNode || dragNode.id === targetNode.id) return;
+  if (isDescendant(dragNode, targetNode.id)) return;         // 禁止拖进自己的子树
+  pushUndo();
+  const oldParent = findParent(root, dragNode.id); if (!oldParent) return;
+  // 重挂载前先锁定当前世界 rect（相对旧父物体）
+  let world = worldRectOf(dragNode);
+  // 残影自愈：若子节点被旧版组合压成了负宽高残影（world.w/h<=0），
+  // 用 group._origRects 里记录的原始 rect 还原其真实世界位置后再重挂载
+  if (world.w <= 0 || world.h <= 0) {
+    const op = findParent(root, oldParent.id);
+    const rec = oldParent._origRects && oldParent._origRects.find(r => r.id === dragNode.id);
+    if (op && rec) world = computeRect({ rect: rec.rect }, worldRectOf(op));
+  }
+  const i = oldParent.children.findIndex(c => c.id === dragNode.id);
+  oldParent.children.splice(i, 1);
+  let newParent;
+  if (position === "child") {
+    targetNode.children.push(dragNode);
+    collapsedSet.delete(targetNode.id);
+    newParent = targetNode;
+  } else {
+    const tp = findParent(root, targetNode.id); if (!tp) return;
+    let idx = tp.children.findIndex(c => c.id === targetNode.id);
+    if (position === "after") idx += 1;
+    tp.children.splice(idx, 0, dragNode);
+    newParent = tp;
+  }
+  // 重挂载后按新父物体重新换算 rect，保证世界位置不变
+  remapRectToParent(dragNode, world, worldRectOf(newParent));
+  render();
+}
+function reorderSibling(node, dir) {       // dir=+1 向更上层(数组后移) / -1 向更下层(数组前移)
+  const parent = findParent(root, node.id); if (!parent) return;
+  const arr = parent.children;
+  const i = arr.findIndex(c => c.id === node.id);
+  const j = i + dir;
+  if (j < 0 || j >= arr.length) return;
+  pushUndo();
+  arr.splice(i, 1); arr.splice(j, 0, node);
+  render();
+}
+function reorderToEdge(node, front) {
+  const parent = findParent(root, node.id); if (!parent) return;
+  const arr = parent.children;
+  const i = arr.findIndex(c => c.id === node.id);
+  pushUndo();
+  arr.splice(i, 1);
+  if (front) arr.push(node); else arr.unshift(node);
+  render();
+}
+
+/* ---------------- 组合 / 取消组合（Figma/PS 的 Ctrl+G） ---------------- */
+function worldRectOf(node) {
+  // 画布根节点 = 设计区本身，世界矩形即整块屏幕（designW×designH）。
+  // 不能用 computeRect(root) 计算——root.rect 是零尺寸锚点占位，会得到 {0,0,0,0}，
+  // 导致子节点世界坐标错位（尤其 Y 轴偏 designH），reparent 到/出根时位置跳变。
+  if (node.id === root.id) return { x: 0, y: 0, w: designW, h: designH };
+  const p = findParent(root, node.id);
+  const pr = p ? worldRectOf(p) : { x: 0, y: 0, w: designW, h: designH };
+  return computeRect(node, pr);
+}
+function sameParentNodes() {
+  const nodes = selectedNodes().filter(n => n.type !== "canvas" && !n.locked);
+  const parents = new Set(nodes.map(n => findParent(root, n.id)));
+  return { nodes, parents };
+}
+function groupSelected() {
+  const { nodes, parents } = sameParentNodes();
+  if (nodes.length < 2) { flashToast("组合需要至少选中 2 个节点（Ctrl+点击多选）"); return; }
+  if (parents.size !== 1) { flashToast("组合仅支持同一父级下的节点"); return; }
+  const parent = [...parents][0];
+  const pr = worldRectOf(parent);
+  // 记录子节点原 rect（供取消组合时精确恢复，保证位置不变）
+  const origRects = nodes.map(n => ({ id: n.id, rect: JSON.parse(JSON.stringify(n.rect)) }));
+  // 计算每个子节点原始世界 rect 的包围盒
+  const worlds = nodes.map(n => ({ n, w: computeRect(n, pr) }));
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const { w } of worlds) {
+    minX = Math.min(minX, w.x); minY = Math.min(minY, w.y);
+    maxX = Math.max(maxX, w.x + w.w); maxY = Math.max(maxY, w.y + w.h);
+  }
+  pushUndo();
+  const g = makeNode("Group", "panel", {});
+  g.rect = { anchorMin: [0, 0], anchorMax: [0, 0], pivot: [0, 0], pos: [minX - pr.x, minY - pr.y], size: [maxX - minX, maxY - minY] };
+  g.style = { color: "rgba(0,0,0,0)", sprite: "none", shadow: false, raycast: false, bgImage: "", fit: "cover" };
+  g._origRects = origRects;
+  const gp = { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  // 关键：保持每个子节点原有的锚点/拉伸，仅把 rect 重新表达到 group 坐标系，
+  // 子节点在 group 内的世界位置/尺寸完全不变（不会像旧版那样被压成负宽高残影）。
+  for (const { n, w } of worlds) {
+    remapRectToParent(n, w, gp);
+    g.children.push(n);
+  }
+  const ids = new Set(nodes.map(n => n.id));
+  const idx = parent.children.findIndex(c => c.id === nodes[0].id);
+  parent.children = parent.children.filter(c => !ids.has(c.id));
+  parent.children.splice(idx, 0, g);
+  clearSelection(); selectedSet.add(g.id); selectedId = g.id;
+  render();
+  flashToast("已组合 " + nodes.length + " 个节点（位置保持不变）");
+}
+function ungroupSelected() {
+  const groups = selectedNodes().filter(n => n.type === "panel" && n.children.length > 0);
+  if (!groups.length) { flashToast("请选中一个组合（Panel）"); return; }
+  pushUndo();
+  for (const g of groups) {
+    const parent = findParent(root, g.id); if (!parent) continue;
+    const idx = parent.children.findIndex(c => c.id === g.id);
+    // 网页工具组合的 group：直接恢复每个子节点在组合前的原始 rect（位置/锚点精确还原）
+    const orig = g._origRects || [];
+    for (const rec of orig) {
+      const k = g.children.find(x => x.id === rec.id);
+      if (k) k.rect = JSON.parse(JSON.stringify(rec.rect));
+    }
+    // 手工创建的 panel（无 _origRects）：按偏移近似还原
+    if (orig.length !== g.children.length) {
+      const dx = g.rect.pos[0], dy = g.rect.pos[1];
+      for (const k of g.children) {
+        if (!orig.some(o => o.id === k.id)) { k.rect.pos[0] += dx; k.rect.pos[1] += dy; }
+      }
+    }
+    parent.children.splice(idx, 1, ...g.children);
+    selectedSet.delete(g.id);
+  }
+  render();
+  flashToast("已取消组合（位置还原）");
+}
+
+/* ---------------- 对齐（Figma/PS 习惯） ---------------- */
+// mode: left | hcenter | right | top | vcenter | bottom（坐标 Y 向上）
+function alignSelected(mode) {
+  const { nodes, parents } = sameParentNodes();
+  if (nodes.length < 2) { flashToast("对齐需要至少 2 个节点（Ctrl+点击多选）"); return; }
+  if (parents.size !== 1) { flashToast("对齐仅支持同一父级下的节点"); return; }
+  const parent = [...parents][0];
+  const pr = worldRectOf(parent);
+  const rects = nodes.map(n => ({ n, r: computeRect(n, pr) }));
+  const minX = Math.min(...rects.map(o => o.r.x)), maxX = Math.max(...rects.map(o => o.r.x + o.r.w));
+  const minY = Math.min(...rects.map(o => o.r.y)), maxY = Math.max(...rects.map(o => o.r.y + o.r.h));
+  pushUndo();
+  for (const { n, r } of rects) {
+    let dx = 0, dy = 0;
+    switch (mode) {
+      case "left":    dx = minX - r.x; break;
+      case "right":   dx = (maxX - r.w) - r.x; break;
+      case "hcenter": dx = ((minX + maxX) / 2 - r.w / 2) - r.x; break;
+      case "top":     dy = (maxY - r.h) - r.y; break;      // 顶边对齐选区最高点
+      case "bottom":  dy = minY - r.y; break;              // 底边对齐选区最低点
+      case "vcenter": dy = ((minY + maxY) / 2 - r.h / 2) - r.y; break;
+    }
+    n.rect.pos[0] = Math.round((n.rect.pos[0] || 0) + dx);
+    n.rect.pos[1] = Math.round((n.rect.pos[1] || 0) + dy);
+  }
+  render();
+  flashToast("已对齐（" + ({ left:"左", hcenter:"水平居中", right:"右", top:"顶", vcenter:"垂直居中", bottom:"底" })[mode] + "）");
+}
+
+/* ---------------- 锁定 / 隐藏（Figma/PS 习惯） ---------------- */
+function toggleLock() {
+  const nodes = selectedNodes().filter(n => n.type !== "canvas");
+  if (!nodes.length) { flashToast("请先选中节点"); return; }
+  pushUndo();
+  const lock = !nodes.some(n => n.locked);
+  nodes.forEach(n => { n.locked = lock; });
+  render();
+  flashToast(lock ? "已锁定 " + nodes.length + " 个节点" : "已解锁");
+}
+function toggleHidden() {
+  const nodes = selectedNodes().filter(n => n.type !== "canvas");
+  if (!nodes.length) { flashToast("请先选中节点"); return; }
+  pushUndo();
+  const hide = !nodes.some(n => n.hidden);
+  nodes.forEach(n => { n.hidden = hide; });
+  render();
+  flashToast(hide ? "已隐藏 " + nodes.length + " 个节点（Ctrl+Shift+H 恢复）" : "已显示");
+}
+
+/* ---------------- 复制 / 粘贴样式（Figma/PS 习惯） ---------------- */
+function copyStyle() {
+  const n = findNode(root, selectedId);
+  if (!n || n.type === "canvas") { flashToast("请先选中一个节点"); return; }
+  styleClipboard = JSON.parse(JSON.stringify({ style: n.style || null, text: n.text || null, image: n.image || null }));
+  flashToast("已复制样式：" + n.name);
+}
+function pasteStyle() {
+  const n = findNode(root, selectedId);
+  if (!n || n.type === "canvas") { flashToast("请先选中一个目标节点"); return; }
+  if (!styleClipboard) { flashToast("样式剪贴板为空（Ctrl+Alt+C 复制样式）"); return; }
+  pushUndo();
+  if (styleClipboard.style) n.style = JSON.parse(JSON.stringify(styleClipboard.style));
+  if (styleClipboard.text && (n.type === "text" || n.type === "button")) n.text = JSON.parse(JSON.stringify(styleClipboard.text));
+  if (styleClipboard.image && n.type === "image") n.image = JSON.parse(JSON.stringify(styleClipboard.image));
+  render();
+  flashToast("已粘贴样式：" + n.name);
+}
+
+/* ---------------- 查找 / 聚焦 ---------------- */
+function findNodeByName(keyword) {
+  let hit = null;
+  const walk = n => {
+    if (hit) return;
+    if (n.type !== "canvas" && n.name.toLowerCase().includes(keyword.toLowerCase())) { hit = n; return; }
+    n.children.forEach(walk);
+  };
+  walk(root);
+  return hit;
+}
+function findAndSelect() {
+  uiPrompt("查找节点", "", "输入名称关键字（模糊匹配）", kw => {
+    if (!kw || !kw.trim()) return;
+    const hit = findNodeByName(kw.trim());
+    if (!hit) { flashToast("未找到包含 “" + kw + "” 的节点"); return; }
+    setMainSelected(hit.id);
+    render();
+    flashToast("已定位：" + hit.name);
+  });
+}
+function focusSelected() {
+  const n = findNode(root, selectedId);
+  if (!n) { flashToast("请先选中一个节点"); return; }
+  let p = findParent(root, n.id);
+  while (p && p.type !== "canvas") { collapsedSet.delete(p.id); p = findParent(root, p.id); }  // 展开路径
+  renderTree();
+  flashToast("聚焦：" + n.name + "（" + n.type + "）");
+}
+function onTreeDragOver(ev) {
+  if (!dragNodeId) return;
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = "move";
+  const tree = $("tree");
+  tree.querySelectorAll(".tree-item").forEach(r => r.classList.remove("drop-before","drop-after","drop-child"));
+  const row = ev.target.closest(".tree-item");
+  if (!row) return;                          // 空白区：释放时追加到根
+  const node = findNode(root, row.dataset.id);
+  if (!node || node.id === dragNodeId) return;
+  if (isDescendant(findNode(root, dragNodeId), node.id)) return;
+  const rect = row.getBoundingClientRect();
+  const ratio = (ev.clientY - rect.top) / rect.height;
+  if (node.type === "canvas") row.classList.add("drop-child");
+  else if (ratio < 0.3) row.classList.add("drop-before");
+  else if (ratio > 0.7) row.classList.add("drop-after");
+  else row.classList.add("drop-child");
+}
+function onTreeDrop(ev) {
+  if (!dragNodeId) return;
+  ev.preventDefault();
+  const tree = $("tree");
+  const dragNode = findNode(root, dragNodeId);
+  const row = ev.target.closest(".tree-item");
+  let targetNode = root, position = "child";
+  if (row) {
+    targetNode = findNode(root, row.dataset.id);
+    const rect = row.getBoundingClientRect();
+    const ratio = (ev.clientY - rect.top) / rect.height;
+    if (targetNode.type === "canvas") position = "child";
+    else if (ratio < 0.3) position = "before";
+    else if (ratio > 0.7) position = "after";
+    else position = "child";
+  }
+  tree.querySelectorAll(".tree-item").forEach(r => r.classList.remove("drop-before","drop-after","drop-child","dragging"));
+  dragNodeId = null;
+  moveNodeTo(dragNode, targetNode, position);
+}
+$("tree").addEventListener("dragover", onTreeDragOver);
+$("tree").addEventListener("drop", onTreeDrop);
+/* 层级栏空白区右键 → 新建顶层元素 / 粘贴 */
+$("tree").addEventListener("contextmenu", ev => {
+  if (ev.target.closest(".tree-item")) return;
+  ev.preventDefault(); ev.stopPropagation();
+  clearSelection(); renderTree(); renderProps();
+  openCtxMenuForNode(root, ev.clientX, ev.clientY);
+});
+
+/* 画布空白处右键 → 在根下新建 / 粘贴 */
+$("canvasWrap").addEventListener("contextmenu", ev => {
+  if (previewMode) return;
+  if (ev.target.closest(".node")) return;
+  ev.preventDefault(); ev.stopPropagation();
+  clearSelection(); render();
+  openCtxMenuForNode(root, ev.clientX, ev.clientY);
+});
+
+/* ==================== 预览模式（对齐 Unity 画布参考分辨率） ==================== */
+let previewMode = false, previewGuides = true;
+function togglePreview() {
+  previewMode = !previewMode;
+  document.body.classList.toggle("preview-mode", previewMode);
+  document.body.classList.toggle("show-guides", previewMode && previewGuides);
+  const b = $("btnPreview"); if (b) b.classList.toggle("active", previewMode);
+  if (previewMode) clearSelection();
+  render();
+}
+function toggleGuides() {
+  previewGuides = !previewGuides;
+  document.body.classList.toggle("show-guides", previewMode && previewGuides);
+  render();
+}
+// 预览：纯展示态，去掉编辑 chrome，居中显示设备框，叠加分辨率标签与对齐参考线
+function renderPreviewChrome(box) {
+  const hud = $("previewHud");
+  if (hud) hud.innerHTML = `预览 · <b>${designW}×${designH}</b> · 与 Unity 画布参考分辨率一致`
+    + ` · <a href="#" id="pgToggle" style="color:#7fc0ff">${previewGuides ? "隐藏参考线" : "显示参考线"}</a>`;
+  const g = document.createElement("div");
+  g.className = "preview-guides";
+  g.innerHTML = '<div class="v"></div><div class="h"></div><div class="safe"></div>';
+  box.appendChild(g);
+  const tog = $("pgToggle");
+  if (tog) tog.addEventListener("click", ev => { ev.preventDefault(); toggleGuides(); });
+}
+
+/* ==================== 差异视图（网页当前 ↔ Unity 快照） ==================== */
+let diffModal = null, diffBaseline = null;
+function openDiff() {
+  if (!diffModal) diffModal = new bootstrap.Modal($("diffModal"));
+  diffModal.show();
+}
+// 把树拍平为 {id, node, path}，供按 id 匹配
+function flattenTree(node, path, acc) {
+  const p = path ? path + "/" + node.name : node.name;
+  acc.push({ id: node.id, node, path: p });
+  (node.children || []).forEach(c => flattenTree(c, p, acc));
+}
+function arrEq(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+function fmt(v) {
+  if (v === undefined || v == null) return "—";
+  if (typeof v === "boolean") return v ? "是" : "否";
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+// 逐字段比较同 id 节点的差异（只比对网页有意义的字段，避免格式噪声）
+function diffFields(a, b) {
+  const f = [];
+  const r1 = a.rect, r2 = b.rect;
+  if (r1 && r2) {
+    for (const k of ["anchorMin", "anchorMax", "pivot", "pos", "size"])
+      if (!arrEq(r1[k], r2[k])) f.push({ field: "rect." + k, old: JSON.stringify(r2[k]), new: JSON.stringify(r1[k]) });
+  } else if (r1 || r2) f.push({ field: "rect", old: r2 ? "有" : "无", new: r1 ? "有" : "无" });
+  if (a.type !== b.type) f.push({ field: "type", old: b.type, new: a.type });
+  if (a.name !== b.name) f.push({ field: "name", old: b.name, new: a.name });
+  if (!!a.hidden !== !!b.hidden) f.push({ field: "hidden", old: !!b.hidden ? "隐藏" : "显示", new: !!a.hidden ? "隐藏" : "显示" });
+  const t1 = a.text, t2 = b.text;
+  if (t1 || t2) for (const k of ["content", "fontSize", "color", "align", "bold", "lineSpacing"]) {
+    const v1 = t1 ? t1[k] : undefined, v2 = t2 ? t2[k] : undefined;
+    if (JSON.stringify(v1) !== JSON.stringify(v2)) f.push({ field: "text." + k, old: fmt(v2), new: fmt(v1) });
+  }
+  const s1 = a.style, s2 = b.style;
+  if (s1 || s2) for (const k of ["color", "sprite", "shadow", "raycast", "bgImage"]) {
+    const v1 = s1 ? s1[k] : undefined, v2 = s2 ? s2[k] : undefined;
+    if (JSON.stringify(v1) !== JSON.stringify(v2)) f.push({ field: "style." + k, old: fmt(v2), new: fmt(v1) });
+  }
+  const i1 = a.image, i2 = b.image;
+  if (i1 || i2) for (const k of ["src", "fit"]) {
+    const v1 = i1 ? i1[k] : undefined, v2 = i2 ? i2[k] : undefined;
+    if (JSON.stringify(v1) !== JSON.stringify(v2)) f.push({ field: "image." + k, old: fmt(v2), new: fmt(v1) });
+  }
+  return f;
+}
+function computeDiff(curRoot, baseRoot) {
+  const cur = [], base = [];
+  curRoot.children.forEach(c => flattenTree(c, "", cur));
+  baseRoot.children.forEach(c => flattenTree(c, "", base));
+  const baseById = new Map(), curById = new Map();
+  base.forEach(e => baseById.set(e.id, e));
+  cur.forEach(e => curById.set(e.id, e));
+  const added = [], removed = [], changed = [];
+  cur.forEach(e => {
+    if (!baseById.has(e.id)) added.push(e);
+    else { const fl = diffFields(e.node, baseById.get(e.id).node); if (fl.length) changed.push({ e, base: baseById.get(e.id), fields: fl }); }
+  });
+  base.forEach(e => { if (!curById.has(e.id)) removed.push(e); });
+  return { added, removed, changed };
+}
+function diffItemHtml(kind, e, fields) {
+  const ty = { panel: "P", button: "B", text: "T", image: "I" }[e.node.type] || "?";
+  let fld = "";
+  if (fields) fields.forEach(x => {
+    fld += `<div class="diff-field"><span class="k">${esc(x.field)}</span> <span class="old">${esc(x.old)}</span><span class="arrow">→</span><span class="new">${esc(x.new)}</span></div>`;
+  });
+  return `<div class="diff-item ${kind}"><div><span class="nm">${esc(e.node.name)}</span> <span class="ty">[${ty}]</span> <span class="path">${esc(e.path)}</span></div>${fld}</div>`;
+}
+function renderDiff(res) {
+  const sum = $("diffSummary");
+  const total = res.added.length + res.removed.length + res.changed.length;
+  sum.innerHTML = `<span class="diff-chip add">➕ 新增 ${res.added.length}</span>`
+    + `<span class="diff-chip del">➖ 删除 ${res.removed.length}</span>`
+    + `<span class="diff-chip chg">✎ 变更 ${res.changed.length}</span>`
+    + `<span class="diff-chip">共 ${total} 处不同</span>`;
+  const body = $("diffBody");
+  if (total === 0) { body.innerHTML = '<div class="diff-empty">✅ 网页与基线完全一致，没有差异。</div>'; return; }
+  let h = "";
+  if (res.changed.length) {
+    h += '<div class="diff-group-title">✎ 变更（位置 / 文本 / 样式被改过）</div>';
+    res.changed.forEach(({ e, fields }) => { h += diffItemHtml("chg", e, fields); });
+  }
+  if (res.added.length) {
+    h += '<div class="diff-group-title">➕ 网页新增（Unity 快照里没有）</div>';
+    res.added.forEach(e => { h += diffItemHtml("add", e, null); });
+  }
+  if (res.removed.length) {
+    h += '<div class="diff-group-title">➖ Unity 有 / 网页已删</div>';
+    res.removed.forEach(e => { h += diffItemHtml("del", e, null); });
+  }
+  body.innerHTML = h;
+}
+$("btnPreview").addEventListener("click", togglePreview);
+$("btnDiff").addEventListener("click", openDiff);
+$("diffLoadBtn").addEventListener("click", () => $("diffFile").click());
+$("diffFile").addEventListener("change", ev => {
+  const f = ev.target.files && ev.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const data = JSON.parse(String(r.result));
+      if (data.format !== "ui-builder") throw new Error("缺少 format: ui-builder");
+      diffBaseline = data;
+      $("diffBaselineName").textContent = "基线：" + f.name + "（" + (data.tree ? data.tree.length : 0) + " 顶层节点）";
+      const res = computeDiff({ children: root.children }, data);
+      renderDiff(res);
+    } catch (e) { alert("载入基线失败：" + e.message); }
+  };
+  r.readAsText(f);
+  ev.target.value = "";
+});
+
+/* ================================================================
+ * AI 排版助手：自然语言 → 放置元素 API（ops 指令）→ 画布
+ * ----------------------------------------------------------------
+ * 设计思路：不让 AI 直接吐 UI JSON（容易结构错乱、锚点算错），
+ * 而是暴露一套**受约束的「放置元素 API」**给 AI 调用：
+ *   add / update / delete / row / column / clear / screen
+ * AI 只需选锚点预设 + 偏移，锚点数学（Unity uGUI RectTransform）
+ * 由本地代码负责，保证生成结果一定是合法且可导入 Unity 的布局。
+ * 未配置 API Key 时自动回退到内置离线规则引擎（可断网演示）。
+ * ================================================================ */
+
+function aiNum(v, def) { const n = Number(v); return Number.isFinite(n) ? n : def; }
+
+// 锚点预设 → uGUI anchorMin / anchorMax / pivot
+const AI_ANCHORS = {
+  "top-left":      { a:[0,1],     p:[0,1] },
+  "top-center":    { a:[0.5,1],   p:[0.5,1] },
+  "top-right":     { a:[1,1],     p:[1,1] },
+  "mid-left":      { a:[0,0.5],   p:[0,0.5] },
+  "center":        { a:[0.5,0.5], p:[0.5,0.5] },
+  "mid-right":     { a:[1,0.5],   p:[1,0.5] },
+  "bottom-left":   { a:[0,0],     p:[0,0] },
+  "bottom-center": { a:[0.5,0],   p:[0.5,0] },
+  "bottom-right":  { a:[1,0],     p:[1,0] },
+  "stretch":       { a:[0,0],   b:[1,1],   p:[0.5,0.5] },
+  "stretch-x":     { a:[0,0.5], b:[1,0.5], p:[0.5,0.5] },
+  "stretch-y":     { a:[0.5,0], b:[0.5,1], p:[0.5,0.5] },
+};
+function aiAnchorRect(anchor, offset, size, type) {
+  const key = String(anchor || "center").toLowerCase();
+  const A = AI_ANCHORS[key] || AI_ANCHORS["center"];
+  const amin = A.a, amax = A.b || A.a;
+  let sz;
+  if (Array.isArray(size) && size.length >= 2) sz = [aiNum(size[0], 0), aiNum(size[1], 0)];
+  else if (key === "stretch")   sz = [0, 0];
+  else if (key === "stretch-x") sz = [0, type === "text" ? 32 : 64];
+  else if (key === "stretch-y") sz = [type === "text" ? 200 : 96, 0];
+  else sz = type === "panel" ? [200,120] : type === "button" ? [200,64] : type === "image" ? [160,160] : [220,32];
+  return {
+    anchorMin: [amin[0], amin[1]],
+    anchorMax: [amax[0], amax[1]],
+    pivot:     [A.p[0], A.p[1]],
+    pos:       [aiNum(offset && offset[0], 0), aiNum(offset && offset[1], 0)],
+    size:      sz,
+  };
+}
+
+/* ---------------- 放置元素 API（供 AI 调用的唯一入口） ---------------- */
+const UIAgentAPI = {
+  refs: new Map(),   // AI 自定义引用名 -> 真实节点 id
+  log: [],
+  reset() { this.refs.clear(); this.log = []; },
+  _push(msg, cls) { this.log.push({ msg, cls: cls || "" }); },
+  _findByName(node, name) {
+    const target = String(name).toLowerCase();
+    let hit = null;
+    const walk = n => { if (hit) return; if (n.type !== "canvas" && String(n.name).toLowerCase() === target) { hit = n; return; } n.children.forEach(walk); };
+    walk(node);
+    return hit;
+  },
+  _resolve(ref) {
+    if (!ref) return null;
+    if (this.refs.has(ref)) { const n = findNode(root, this.refs.get(ref)); if (n) return n; }
+    const byId = findNode(root, ref); if (byId) return byId;
+    return this._findByName(root, ref);
+  },
+
+  setScreen(w, h) {
+    const nw = clamp(aiNum(w, designW), 240, 4096), nh = clamp(aiNum(h, designH), 240, 4096);
+    if (nw === designW && nh === designH) return;
+    designW = nw; designH = nh;
+    this._push("🖥 画布尺寸 → " + nw + "×" + nh);
+  },
+  clear() {
+    const n = root.children.length;
+    root.children = [];
+    this.refs.clear();
+    this._push("🧹 清空画布（移除 " + n + " 个顶层节点）");
+  },
+  add(s) {
+    const type = ["panel","button","text","image"].includes(s.type) ? s.type : "panel";
+    const parent = s.parent ? this._resolve(s.parent) : null;
+    if (s.parent && !parent) this._push("⚠ 找不到父节点「" + s.parent + "」，已挂到画布根", "warn");
+    const host = parent && parent.type !== "canvas" ? parent : root;
+    const r = aiAnchorRect(s.anchor, s.offset, s.size, type);
+    const node = makeNode(String(s.name || (type === "panel" ? "Panel" : type === "button" ? "Btn" : type === "text" ? "Text" : "Img")), type, {
+      anchorMin: r.anchorMin, anchorMax: r.anchorMax, pivot: r.pivot, pos: r.pos, size: r.size,
+      color: s.color, sprite: s.sprite, shadow: s.shadow, raycast: s.raycast,
+      text: s.text, fontSize: s.fontSize, textColor: s.textColor, align: s.align, bold: s.bold,
+      src: s.src,
+    });
+    host.children.push(node);
+    if (s.id) this.refs.set(String(s.id), node.id);
+    this._push("＋ " + type + " 「" + node.name + "」→ " + (host === root ? "画布" : host.name)
+             + "  @" + (s.anchor || "center") + " " + JSON.stringify(node.rect.pos) + " " + JSON.stringify(node.rect.size));
+    return node;
+  },
+  update(s) {
+    const key = s.ref || s.id || s.name;
+    const n = this._resolve(key);
+    if (!n || n.type === "canvas") { this._push("⚠ update 找不到节点「" + key + "」", "warn"); return null; }
+    const changed = [];
+    if (s.rename) { n.name = String(s.rename); changed.push("name"); }
+    if (s.anchor) {
+      const r = aiAnchorRect(s.anchor, s.offset || n.rect.pos, s.size || n.rect.size, n.type);
+      n.rect = r; changed.push("anchor");
+    } else {
+      if (Array.isArray(s.offset)) { n.rect.pos = [aiNum(s.offset[0], n.rect.pos[0]), aiNum(s.offset[1], n.rect.pos[1])]; changed.push("pos"); }
+      if (Array.isArray(s.size))   { n.rect.size = [aiNum(s.size[0], n.rect.size[0]), aiNum(s.size[1], n.rect.size[1])]; changed.push("size"); }
+    }
+    if (n.style) {
+      if (s.color)  { n.style.color = s.color; changed.push("color"); }
+      if (s.sprite) { n.style.sprite = s.sprite; changed.push("sprite"); }
+      if (typeof s.shadow === "boolean") { n.style.shadow = s.shadow; changed.push("shadow"); }
+    }
+    if (n.text) {
+      if (s.text !== undefined)  { n.text.content = String(s.text); changed.push("text"); }
+      if (s.fontSize)            { n.text.fontSize = aiNum(s.fontSize, n.text.fontSize); changed.push("fontSize"); }
+      if (s.textColor)           { n.text.color = s.textColor; changed.push("textColor"); }
+      if (s.align)               { n.text.align = s.align; changed.push("align"); }
+      if (typeof s.bold === "boolean") { n.text.bold = s.bold; changed.push("bold"); }
+    }
+    this._push("✎ 修改「" + n.name + "」：" + (changed.join(" / ") || "无字段"));
+    return n;
+  },
+  remove(ref) {
+    const n = this._resolve(ref);
+    if (!n || n.type === "canvas") { this._push("⚠ delete 找不到节点「" + ref + "」", "warn"); return; }
+    const p = findParent(root, n.id) || root;
+    const i = p.children.indexOf(n);
+    if (i >= 0) p.children.splice(i, 1);
+    this._push("－ 删除「" + n.name + "」");
+  },
+  // 等距排布：offset 视为整排 / 整列的中心（相对锚点）
+  arrange(kind, refs, opts) {
+    const nodes = (refs || []).map(r => this._resolve(r)).filter(n => n && n.type !== "canvas");
+    if (nodes.length < 2) { this._push("⚠ " + kind + " 需要至少 2 个有效节点", "warn"); return; }
+    const gap = aiNum(opts.gap, 20);
+    if (opts.anchor) {
+      for (const n of nodes) {
+        const r = aiAnchorRect(opts.anchor, n.rect.pos, n.rect.size, n.type);
+        n.rect.anchorMin = r.anchorMin; n.rect.anchorMax = r.anchorMax; n.rect.pivot = r.pivot;
+      }
+    }
+    const W = n => Math.abs(n.rect.size[0]) || 1;
+    const H = n => Math.abs(n.rect.size[1]) || 1;
+    const centerOf = n => [ n.rect.pos[0] + (0.5 - n.rect.pivot[0]) * W(n), n.rect.pos[1] + (0.5 - n.rect.pivot[1]) * H(n) ];
+    const setCenter = (n, cx, cy) => {
+      n.rect.pos[0] = Math.round(cx - (0.5 - n.rect.pivot[0]) * W(n));
+      n.rect.pos[1] = Math.round(cy - (0.5 - n.rect.pivot[1]) * H(n));
+    };
+    const base = Array.isArray(opts.offset) ? [aiNum(opts.offset[0], 0), aiNum(opts.offset[1], 0)] : centerOf(nodes[0]);
+    if (kind === "row") {
+      const total = nodes.reduce((s, n) => s + W(n), 0) + gap * (nodes.length - 1);
+      let x = base[0] - total / 2;
+      for (const n of nodes) { const w = W(n); setCenter(n, x + w / 2, base[1]); x += w + gap; }
+    } else {
+      const total = nodes.reduce((s, n) => s + H(n), 0) + gap * (nodes.length - 1);
+      let y = base[1] + total / 2;
+      for (const n of nodes) { const h = H(n); setCenter(n, base[0], y - h / 2); y -= h + gap; }
+    }
+    this._push("⇹ " + (kind === "row" ? "水平" : "垂直") + "等距排布 " + nodes.length + " 个：" + nodes.map(n => n.name).join(" · ") + "（gap " + gap + "）");
+  },
+};
+
+/* ---------------- 指令执行器 ---------------- */
+function runAIOps(plan, append) {
+  let ops = Array.isArray(plan) ? plan : (plan && plan.ops) || [];
+  if (!Array.isArray(ops) || !ops.length) throw new Error("方案里没有任何操作（ops 为空）");
+  if (append) ops = ops.filter(o => !/^(clear|reset)$/i.test(String(o && (o.op || o.action) || "")));
+  pushUndo();
+  UIAgentAPI.reset();
+  if (!append && plan && plan.screen) UIAgentAPI.setScreen(plan.screen.w, plan.screen.h);
+  for (const op of ops) {
+    const kind = String((op && (op.op || op.action)) || "").toLowerCase();
+    try {
+      switch (kind) {
+        case "clear": case "reset":       UIAgentAPI.clear(); break;
+        case "screen": case "setscreen":  UIAgentAPI.setScreen(op.w, op.h); break;
+        case "add": case "create": case "place": UIAgentAPI.add(op); break;
+        case "update": case "set": case "move":  UIAgentAPI.update(op); break;
+        case "delete": case "remove":     UIAgentAPI.remove(op.ref || op.id || op.name); break;
+        case "row":                       UIAgentAPI.arrange("row", op.ids || op.refs, op); break;
+        case "column": case "col":        UIAgentAPI.arrange("column", op.ids || op.refs, op); break;
+        default: UIAgentAPI._push("⚠ 未识别的操作：" + (kind || "(空)"), "warn");
+      }
+    } catch (e) {
+      UIAgentAPI._push("✗ " + kind + " 执行失败：" + e.message, "err");
+    }
+  }
+  clearSelection();
+  render();
+  return UIAgentAPI.log;
+}
+
+/* ---------------- 给 AI 的 API 说明（同时也是 system prompt） ---------------- */
+const AI_API_SPEC = [
+"你是游戏 UI 排版助手。根据策划的自然语言需求，调用「放置元素 API」把界面摆好。",
+"只输出一个 JSON 对象，不要任何解释文字，不要 markdown 代码块。",
+"",
+"顶层格式：",
+'{ "screen": {"w":720,"h":1280}, "summary":"一句话说明排版思路", "ops":[ ...指令... ] }',
+"",
+"ops 支持的指令：",
+'1) {"op":"clear"}  清空画布（要做一整屏新界面时第一条就调用）',
+'2) {"op":"add","id":"引用名","type":"panel|button|text|image","name":"节点名","parent":"父节点引用名（省略=画布根）",',
+'      "anchor":"锚点预设","offset":[x,y],"size":[w,h],',
+'      "color":"#rrggbb","sprite":"none|round|pill","shadow":true,',
+'      "text":"文字","fontSize":24,"textColor":"#ffffff","align":"middle-center","bold":true}',
+'3) {"op":"update","ref":"引用名或节点名","offset":[x,y],"size":[w,h],"text":"新文字","color":"#rrggbb"}',
+'4) {"op":"delete","ref":"引用名或节点名"}',
+'5) {"op":"row","ids":["a","b","c"],"gap":24,"offset":[0,120],"anchor":"bottom-center"}   水平等距排一排',
+'6) {"op":"column","ids":["a","b","c"],"gap":16,"offset":[0,0],"anchor":"center"}         垂直等距排一列',
+"   row / column 的 offset 表示整排 / 整列的中心位置（相对锚点）。",
+"",
+"anchor 锚点预设（等同 Unity uGUI RectTransform）：",
+"  top-left / top-center / top-right",
+"  mid-left / center / mid-right",
+"  bottom-left / bottom-center / bottom-right",
+"  stretch（铺满父级，size 用 [0,0]） / stretch-x（横向铺满，size 用 [0,高]） / stretch-y（纵向铺满，size 用 [宽,0]）",
+"",
+"坐标规则：",
+"- 画布左下角是 (0,0)，右上角是 (w,h)；offset 是相对锚点的像素偏移。",
+'- 顶部锚点向下为负 y：{"anchor":"top-center","offset":[0,-150]} = 距顶部 150。',
+"- 底部锚点向上为正 y；左锚点向右为正 x；右锚点向左为负 x。",
+"- 居中锚点 center 的 offset 就是相对画面正中的偏移。",
+"",
+"排版规范（务必遵守）：",
+'- 第一个元素先加铺满的背景：{"op":"add","id":"bg","type":"panel","name":"Bg","anchor":"stretch","size":[0,0],"color":"#2b2f3a","sprite":"none"}',
+"- 安全边距 ≥ 18px；主按钮高 ≥ 72；次级按钮高 ≥ 52；任何可点区域 ≥ 44×44。",
+"- 标题放上部（top-center，offset y 约 -120 ~ -190）；主 CTA 放中部或中下；次级按钮用 row 排在底部。",
+"- 顶部状态条（金币 / 设置）用 top-left / top-right，offset 取 ±18。",
+"- 按钮请直接用 type:\"button\" 并在 text 里写文案，不要再额外加子文本节点。",
+"- 弹窗做法：先加半透明遮罩 panel（anchor stretch，color rgba(0,0,0,0.55)，sprite none），",
+"  再加卡片 panel（anchor center，size 约 [560,720]，sprite round），弹窗内元素 parent 指向卡片引用名。",
+"- 同类元素务必用 row / column 保证等距，不要手算一堆坐标。",
+"- 配色：背景 #2b2f3a，卡片 #343a48，主按钮 #ff7a5c，次级按钮 #4a5163，标题 #ffca62，正文 #ffffff，副文案 #c8ccd6。",
+].join("\n");
+
+function buildAIContext() {
+  const lines = [];
+  const walk = (n, d) => {
+    if (n.type !== "canvas") {
+      const r = n.rect;
+      lines.push("  ".repeat(Math.max(0, d - 1)) + "- " + n.name + " (" + n.type + ")"
+        + " anchor=[" + r.anchorMin + "]~[" + r.anchorMax + "]"
+        + " pos=[" + r.pos + "] size=[" + r.size + "]"
+        + (n.text ? ' text="' + n.text.content + '"' : ""));
+    }
+    n.children.forEach(c => walk(c, d + 1));
+  };
+  root.children.forEach(c => walk(c, 1));
+  const sel = selectedNodes().filter(n => n.type !== "canvas").map(n => n.name);
+  return "【当前画布】" + designW + "×" + designH
+       + "\n【现有节点】\n" + (lines.join("\n") || "（空）")
+       + "\n【当前选中】" + (sel.join(", ") || "无");
+}
+
+/* ---------------- AI 接口配置（存 localStorage） ---------------- */
+const AI_CFG_KEY = "uiBuilderAICfg";
+const AI_PRESETS = {
+  deepseek:  { base:"https://api.deepseek.com/v1/chat/completions",                          model:"deepseek-chat" },
+  openai:    { base:"https://api.openai.com/v1/chat/completions",                            model:"gpt-4o-mini" },
+  moonshot:  { base:"https://api.moonshot.cn/v1/chat/completions",                            model:"moonshot-v1-8k" },
+  zhipu:     { base:"https://open.bigmodel.cn/api/paas/v4/chat/completions",                  model:"glm-4-flash" },
+  dashscope: { base:"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",     model:"qwen-plus" },
+  ollama:    { base:"http://localhost:11434/v1/chat/completions",                             model:"qwen2.5:7b" },
+};
+function aiCfg() {
+  let c = {};
+  try { c = JSON.parse(localStorage.getItem(AI_CFG_KEY) || "{}"); } catch (e) { c = {}; }
+  return Object.assign({ preset:"deepseek", base:AI_PRESETS.deepseek.base, model:AI_PRESETS.deepseek.model, key:"", temp:0.3, proxy:false }, c);
+}
+// 本地代理：CSP 只放行 http://127.0.0.1:* 时，请求改走本地转发服务（node ai-proxy.js），绕过外联白名单。
+const AI_PROXY = "http://127.0.0.1:8788/proxy?u=";
+// 百炼等官方文档给的兼容地址常以 /v1 结尾（不带 /chat/completions），自动补全，避免 POST 404。
+function normalizeBase(url) {
+  let u = String(url || "").trim().replace(/\/+$/, "");
+  if (u && !/\/chat\/completions$/.test(u)) u += "/chat/completions";
+  return u;
+}
+function saveAICfg() {
+  const c = {
+    preset: $("aiPreset").value,
+    base:   $("aiBase").value.trim()  || AI_PRESETS.deepseek.base,
+    model:  $("aiModel").value.trim() || AI_PRESETS.deepseek.model,
+    key:    $("aiKey").value.trim(),
+    temp:   aiNum($("aiTemp").value, 0.3),
+    proxy:  !!$("aiUseProxy").checked,
+  };
+  try { localStorage.setItem(AI_CFG_KEY, JSON.stringify(c)); } catch (e) {}
+  flashToast(c.key ? "AI 设置已保存（Key 仅存本机）" : "已保存 · 未填 Key，将走离线规则引擎");
+  updateAIStatus();
+}
+function fillAICfgForm() {
+  const c = aiCfg();
+  $("aiPreset").value = c.preset in AI_PRESETS ? c.preset : "custom";
+  $("aiBase").value = c.base; $("aiModel").value = c.model;
+  $("aiKey").value = c.key;   $("aiTemp").value = c.temp;
+  $("aiUseProxy").checked = !!c.proxy;
+  $("aiSpecText").textContent = AI_API_SPEC;
+  updateAIStatus();
+}
+function updateAIStatus() {
+  const c = aiCfg(), el = $("aiStatus");
+  if (!el) return;
+  el.innerHTML = (c.proxy ? '<span class="ai-badge">本地代理</span> · ' : "")
+    + (c.key
+      ? '已连接 <span class="ai-badge">' + esc(c.model) + "</span>"
+      : '未配置 Key · 将使用 <span class="ai-badge local">离线规则引擎</span>');
+}
+
+/* ---------------- 测试连接 ---------------- */
+function readAICfgFromForm() {
+  const c = aiCfg();
+  const base  = ($("aiBase").value || "").trim();
+  const model = ($("aiModel").value || "").trim();
+  const key   = ($("aiKey").value || "").trim();
+  if (base)  c.base = base;   // 表单留空时回退已存配置
+  if (model) c.model = model;
+  c.key = key;                // 表单留空 = 显式清空 Key（所见即所得）
+  c.proxy = !!$("aiUseProxy").checked; // 代理开关也读表单当前值
+  c.base = normalizeBase(c.base);
+  if (c.proxy) c.base = AI_PROXY + encodeURIComponent(c.base); // 本地代理模式：改走 127.0.0.1 转发
+  return c;
+}
+async function testAIConnection() {
+  const btn = $("aiTestConn"), msg = $("aiTestMsg");
+  if (!btn || !msg) return;
+  const cfg = readAICfgFromForm();
+  const noKeyOk = !cfg.proxy && /localhost|127\.0\.0\.1/.test(cfg.base); // 仅纯本地 Ollama 可免 Key
+  if (!cfg.key && !noKeyOk) {
+    msg.className = "ms-1 text-warning";
+    msg.textContent = "⚠ 未填 Key，无法测试在线模型（本地 Ollama 可免 Key）";
+    return;
+  }
+  const oldLabel = btn.textContent;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="ai-busy"></span> 测试中…';
+  msg.className = "ms-1 text-secondary";
+  msg.textContent = "正在连接 " + cfg.base + " …";
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 20000);
+    let res;
+    try {
+      res = await fetch(cfg.base, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + cfg.key },
+        body: JSON.stringify((/^qwen3(?:\.[\d]+)?-/i.test(cfg.model))
+          ? { model: cfg.model, enable_thinking: false, messages: [{ role: "user", content: "ping" }] }
+          : { model: cfg.model, messages: [{ role: "user", content: "ping" }] }),
+        signal: ctrl.signal,
+      });
+    } catch (e) {
+      clearTimeout(t);
+      const isFile = typeof location !== "undefined" && location.protocol === "file:";
+      msg.className = "ms-1 text-danger";
+      msg.textContent = "✗ 连接失败（网络 / CORS / 地址错误）：" + e.message
+        + (isFile ? "（检测到用 file:// 双击打开，浏览器会拦截跨域请求——请改用 http:// 方式打开，如 WorkBuddy 预览或本地 http 服务）"
+                  : "（请按 F12 打开浏览器控制台，把 Console 里的具体报错发我：CORS blocked / net::ERR_* / CSP refused）");
+      return;
+    }
+    clearTimeout(t);
+    if (res.ok) {
+      msg.className = "ms-1 text-success";
+      msg.textContent = "✓ 连接成功 · 模型「" + cfg.model + "」可用";
+    } else {
+      let detail = "";
+      try { detail = (await res.text()).slice(0, 200); } catch (e) {}
+      let hint = "";
+      if (res.status === 401) hint = " → Key 无效：请到对应控制台重新复制 API Key（sk- 开头，不要带 Bearer 前缀）";
+      else if (res.status === 404) hint = " → 地址或模型名不存在，检查接口地址与模型名";
+      else if (res.status === 429) hint = " → 触发限流 / 额度不足，稍后或换模型";
+      else if (res.status === 403) {
+        if (/quota|FreeTier|exhausted|额度|免费/i.test(detail)) hint = " → 免费额度已用尽：到百炼控制台关闭「仅使用免费额度」模式，或充值后开通付费";
+        else hint = " → 无权限（账号未开通该模型或 Key 被禁用）";
+      }
+      msg.className = "ms-1 text-danger";
+      msg.textContent = "✗ HTTP " + res.status + hint + (detail ? " · " + detail : "");
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = oldLabel;
+  }
+}
+
+/* ---------------- 调用 AI ---------------- */
+function parseAIPlan(txt) {
+  let s = String(txt || "").trim();
+  s = s.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+  s = s.replace(/<think[\s\S]*?<\/think>/gi, "").trim(); // 思考模型可能残留推理块，先剥掉再取 JSON
+  const a = s.indexOf("{"), b = s.lastIndexOf("}");
+  if (a >= 0 && b > a) s = s.slice(a, b + 1);
+  const plan = JSON.parse(s);
+  if (!plan || (!Array.isArray(plan.ops) && !Array.isArray(plan))) throw new Error("返回内容里没有 ops 数组");
+  return plan;
+}
+async function callAI(userPrompt, append) {
+  const cfg = readAICfgFromForm(); // 读表单当前值：填了就能用，不必先点保存
+  const noKeyOk = !cfg.proxy && /localhost|127\.0\.0\.1/.test(cfg.base); // 仅纯本地 Ollama 可免 Key
+  if (!cfg.key && !noKeyOk) throw new Error("NO_KEY");
+  const scopeHint = append
+    ? "本次是【在现有基础上追加 / 修改】：不要输出 clear 指令，尽量用 update 改已有节点、用 add 补新节点。"
+    : "本次是【新建整屏】：第一条指令必须是 clear。";
+  const body = {
+    model: cfg.model,
+    temperature: aiNum(cfg.temp, 0.3),
+    messages: [
+      { role: "system", content: AI_API_SPEC },
+      { role: "user",   content: buildAIContext() + "\n\n" + scopeHint + "\n\n【策划需求】\n" + userPrompt },
+    ],
+    response_format: { type: "json_object" },
+  };
+  // Qwen3 系列是思考模型：开启 thinking 时与 response_format=json_object 不兼容，百炼会返回 400。
+  // 生成 UI 不需要推理链，直接关闭思考即可正常出 JSON。
+  if (/^qwen3(?:\.[\d]+)?-/i.test(cfg.model)) body.enable_thinking = false;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 90000);
+  let res;
+  try {
+    res = await fetch(cfg.base, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + cfg.key },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    const isFile = typeof location !== "undefined" && location.protocol === "file:";
+    throw new Error("网络请求失败（跨域 CORS / 断网 / 地址错误）：" + e.message
+      + (isFile ? "（检测到 file:// 打开，浏览器会拦截跨域请求，请改用 http:// 方式打开页面）"
+                : "（按 F12 看 Console 具体报错后重试）"));
+  }
+  clearTimeout(timer);
+  if (!res.ok) {
+    let detail = "";
+    try { detail = (await res.text()).slice(0, 240); } catch (e) {}
+    throw new Error("HTTP " + res.status + " " + detail);
+  }
+  const j = await res.json();
+  const txt = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "";
+  if (!txt) throw new Error("模型没有返回内容");
+  return parseAIPlan(txt);
+}
+
+/* ---------------- 离线规则引擎（无 Key / 断网也能演示） ---------------- */
+function aiGrid(prefix, count, cols, cellW, cellH, gapX, gapY, centerY, mk) {
+  const ops = [], rows = Math.ceil(count / cols);
+  const totalW = cols * cellW + (cols - 1) * gapX;
+  const totalH = rows * cellH + (rows - 1) * gapY;
+  for (let i = 0; i < count; i++) {
+    const c = i % cols, r = Math.floor(i / cols);
+    const x = -totalW / 2 + cellW / 2 + c * (cellW + gapX);
+    const y = centerY + totalH / 2 - cellH / 2 - r * (cellH + gapY);
+    ops.push(Object.assign({ op:"add", id:prefix + i, anchor:"center", offset:[Math.round(x), Math.round(y)], size:[cellW, cellH] }, mk(i)));
+  }
+  return ops;
+}
+// 意图识别用「加权打分」而不是首个命中：主菜单描述里几乎必然提到「商店 / 设置」，
+// 若按顺序首次匹配会被误判成商店页 / 设置页。strong 权重 3，weak 权重 1，取最高分。
+const AI_INTENTS = [
+  { key:"settle",   strong:["结算","通关","胜利","失败","成绩","再来一局","result","settle","game over"], weak:["星","分数","奖励"] },
+  { key:"settings", strong:["设置面板","设置弹窗","设置页","设置界面","音效","音量","震动"],               weak:["设置","选项","开关"] },
+  { key:"shop",     strong:["商店页","商店界面","商城","背包","道具","皮肤","购买","商品","礼包"],         weak:["商店","金币"] },
+  { key:"level",    strong:["关卡","选关","章节","level","stage","chapter"],                             weak:["解锁","星级","页码"] },
+  { key:"hud",      strong:["hud","局内","战斗界面","血条","血量","技能","连击","combo"],                  weak:["暂停","分数"] },
+  { key:"menu",     strong:["主菜单","主界面","主页面","首页","开始游戏","标题界面","main menu","开始按钮"], weak:["菜单","首屏","标题"] },
+];
+function aiDetectIntent(raw) {
+  const low = String(raw || "").toLowerCase();
+  let best = "menu", bestScore = 0;
+  for (const it of AI_INTENTS) {
+    let s = 0;
+    for (const k of it.strong) if (low.includes(k.toLowerCase())) s += 3;
+    for (const k of it.weak)   if (low.includes(k.toLowerCase())) s += 1;
+    if (s > bestScore) { bestScore = s; best = it.key; }
+  }
+  return best;
+}
+function localPlanner(text, append) {
+  const raw = String(text || "");
+  const intent = aiDetectIntent(raw);
+  const m = raw.match(/[「『“"《]([^」』”"》]{1,18})[」』”"》]/);
+  const title = m ? m[1] : "游戏标题";
+  const BG   = { op:"add", id:"bg", type:"panel", name:"Bg", anchor:"stretch", size:[0,0], color:"#2b2f3a", sprite:"none" };
+  const MASK = { op:"add", id:"mask", type:"panel", name:"Mask", anchor:"stretch", size:[0,0], color:"rgba(0,0,0,0.55)", sprite:"none" };
+  let plan;
+
+  if (intent === "settle") {
+    plan = { summary:"结算弹窗：遮罩 + 居中卡片，标题 / 三星 / 数据两行 / 底部双按钮", ops:[
+      { op:"clear" }, BG, MASK,
+      { op:"add", id:"card", type:"panel", name:"ResultCard", anchor:"center", size:[560,700], color:"#343a48", sprite:"round" },
+      { op:"add", id:"t", parent:"card", type:"text", name:"Title", anchor:"top-center", offset:[0,-46], size:[440,54], text:"关卡完成", fontSize:38, textColor:"#ffca62", bold:true },
+      { op:"add", id:"s1", parent:"card", type:"image", name:"Star1", anchor:"top-center", offset:[-112,-130], size:[86,86], color:"#ffd76a", sprite:"round" },
+      { op:"add", id:"s2", parent:"card", type:"image", name:"Star2", anchor:"top-center", offset:[0,-118],   size:[100,100], color:"#ffd76a", sprite:"round" },
+      { op:"add", id:"s3", parent:"card", type:"image", name:"Star3", anchor:"top-center", offset:[112,-130],  size:[86,86], color:"#4a5163", sprite:"round" },
+      { op:"add", id:"r1", parent:"card", type:"panel", name:"ScoreRow", anchor:"center", offset:[0,20],  size:[464,72], color:"rgba(255,255,255,0.08)", sprite:"round" },
+      { op:"add", id:"r1t", parent:"r1", type:"text", name:"ScoreText", anchor:"stretch", size:[-32,0], text:"本局得分            12,480", fontSize:22, align:"middle-left" },
+      { op:"add", id:"r2", parent:"card", type:"panel", name:"CoinRow", anchor:"center", offset:[0,-64], size:[464,72], color:"rgba(255,255,255,0.08)", sprite:"round" },
+      { op:"add", id:"r2t", parent:"r2", type:"text", name:"CoinText", anchor:"stretch", size:[-32,0], text:"金币奖励            +320", fontSize:22, textColor:"#ffe08a", align:"middle-left" },
+      { op:"add", id:"again", parent:"card", type:"button", name:"RetryBtn", anchor:"bottom-center", size:[236,76], text:"再来一局", fontSize:22, bold:true, shadow:true },
+      { op:"add", id:"home",  parent:"card", type:"button", name:"HomeBtn", anchor:"bottom-center", size:[236,76], text:"返回主页", fontSize:22, bold:true, color:"#4a5163" },
+      { op:"row", ids:["again","home"], gap:24, offset:[0,84], anchor:"bottom-center" },
+    ]};
+  } else if (intent === "settings") {
+    const rows = [["音乐","MusicRow"],["音效","SfxRow"],["震动","VibrateRow"],["语言","LangRow"]];
+    plan = { summary:"设置弹窗：遮罩 + 卡片，四行设置项垂直等距，底部关闭按钮", ops:[
+      { op:"clear" }, BG, MASK,
+      { op:"add", id:"card", type:"panel", name:"SettingsCard", anchor:"center", size:[560,660], color:"#343a48", sprite:"round" },
+      { op:"add", id:"t", parent:"card", type:"text", name:"Title", anchor:"top-center", offset:[0,-44], size:[400,50], text:"设置", fontSize:34, textColor:"#ffca62", bold:true },
+      ...rows.map((r, i) => ({ op:"add", id:"row" + i, parent:"card", type:"panel", name:r[1], anchor:"center", size:[464,78], color:"rgba(255,255,255,0.08)", sprite:"round" })),
+      ...rows.map((r, i) => ({ op:"add", id:"row" + i + "t", parent:"row" + i, type:"text", name:r[1] + "Label", anchor:"mid-left", offset:[24,0], size:[220,32], text:r[0], fontSize:22, align:"middle-left" })),
+      ...rows.map((r, i) => ({ op:"add", id:"row" + i + "s", parent:"row" + i, type:"button", name:r[1] + "Toggle", anchor:"mid-right", offset:[-20,0], size:[92,48], text:i === 3 ? "中文" : "开", fontSize:16, bold:true })),
+      { op:"column", ids:rows.map((r, i) => "row" + i), gap:18, offset:[0,30], anchor:"center" },
+      { op:"add", id:"close", parent:"card", type:"button", name:"CloseBtn", anchor:"bottom-center", offset:[0,40], size:[300,76], text:"关闭", fontSize:22, bold:true, shadow:true },
+    ]};
+  } else if (intent === "shop") {
+    plan = { summary:"商店页：顶部返回 / 标题 / 余额，中部 2×3 商品网格，底部购买 CTA", ops:[
+      { op:"clear" }, BG,
+      { op:"add", id:"back", type:"button", name:"BackBtn", anchor:"top-left", offset:[18,-18], size:[64,64], text:"←", fontSize:26, bold:true, color:"#4a5163" },
+      { op:"add", id:"t", type:"text", name:"Title", anchor:"top-center", offset:[0,-34], size:[300,44], text:"商店", fontSize:30, textColor:"#ffca62", bold:true },
+      { op:"add", id:"coins", type:"panel", name:"Coins", anchor:"top-right", offset:[-18,-24], size:[160,52], color:"rgba(255,255,255,0.14)", sprite:"pill" },
+      { op:"add", id:"coinsT", parent:"coins", type:"text", name:"CoinText", anchor:"stretch", size:[-16,0], text:"💰 1280", fontSize:18, textColor:"#ffe08a", bold:true },
+      ...aiGrid("item", 6, 2, 300, 220, 24, 24, 40, i => ({ type:"panel", name:"ItemCard" + (i+1), color:"#343a48", sprite:"round" })),
+      ...[0,1,2,3,4,5].map(i => ({ op:"add", id:"itemT" + i, parent:"item" + i, type:"text", name:"ItemName" + (i+1), anchor:"bottom-center", offset:[0,52], size:[260,30], text:"商品 " + (i+1), fontSize:18, bold:true })),
+      ...[0,1,2,3,4,5].map(i => ({ op:"add", id:"itemP" + i, parent:"item" + i, type:"text", name:"ItemPrice" + (i+1), anchor:"bottom-center", offset:[0,18], size:[260,26], text:"💰 " + (120 * (i + 1)), fontSize:16, textColor:"#ffe08a" })),
+      { op:"add", id:"buy", type:"button", name:"BuyBtn", anchor:"bottom-center", offset:[0,52], size:[420,84], text:"购买", fontSize:24, bold:true, shadow:true },
+    ]};
+  } else if (intent === "level") {
+    plan = { summary:"选关页：顶部返回 / 标题，中部 3×3 关卡按钮网格，底部翻页", ops:[
+      { op:"clear" }, BG,
+      { op:"add", id:"back", type:"button", name:"BackBtn", anchor:"top-left", offset:[18,-18], size:[64,64], text:"←", fontSize:26, bold:true, color:"#4a5163" },
+      { op:"add", id:"t", type:"text", name:"Title", anchor:"top-center", offset:[0,-34], size:[360,44], text:"第一章 · 新手村", fontSize:28, textColor:"#ffca62", bold:true },
+      ...aiGrid("lv", 9, 3, 176, 176, 22, 22, 40, i => ({ type:"button", name:"Level" + (i+1), text:String(i+1), fontSize:34, bold:true, sprite:"round", color:i < 5 ? "#ff7a5c" : "#4a5163" })),
+      { op:"add", id:"prev", type:"button", name:"PrevBtn", anchor:"bottom-center", size:[120,64], text:"上一页", fontSize:16, bold:true, color:"#4a5163" },
+      { op:"add", id:"page", type:"text",   name:"PageText", anchor:"bottom-center", size:[120,40], text:"1 / 6", fontSize:20, bold:true },
+      { op:"add", id:"next", type:"button", name:"NextBtn", anchor:"bottom-center", size:[120,64], text:"下一页", fontSize:16, bold:true, color:"#4a5163" },
+      { op:"row", ids:["prev","page","next"], gap:28, offset:[0,90], anchor:"bottom-center" },
+    ]};
+  } else if (intent === "hud") {
+    plan = { summary:"局内 HUD：左上血条 + 右上暂停 + 顶部分数 + 底部技能一排", ops:[
+      { op:"clear" }, BG,
+      { op:"add", id:"hpbg", type:"panel", name:"HpBg", anchor:"top-left", offset:[18,-18], size:[280,30], color:"rgba(0,0,0,0.45)", sprite:"pill" },
+      { op:"add", id:"hp",   parent:"hpbg", type:"panel", name:"HpFill", anchor:"mid-left", offset:[3,0], size:[200,24], color:"#ff5c5c", sprite:"pill" },
+      { op:"add", id:"pause", type:"button", name:"PauseBtn", anchor:"top-right", offset:[-18,-18], size:[58,58], text:"⏸", fontSize:22, bold:true, color:"#4a5163" },
+      { op:"add", id:"score", type:"text", name:"ScoreText", anchor:"top-center", offset:[0,-26], size:[300,44], text:"12,480", fontSize:32, textColor:"#ffca62", bold:true },
+      { op:"add", id:"combo", type:"text", name:"ComboText", anchor:"top-center", offset:[0,-72], size:[300,30], text:"COMBO ×8", fontSize:18, textColor:"#c8ccd6" },
+      { op:"add", id:"sk1", type:"button", name:"Skill1", anchor:"bottom-center", size:[104,104], text:"技1", fontSize:20, bold:true, sprite:"round" },
+      { op:"add", id:"sk2", type:"button", name:"Skill2", anchor:"bottom-center", size:[104,104], text:"技2", fontSize:20, bold:true, sprite:"round" },
+      { op:"add", id:"sk3", type:"button", name:"Skill3", anchor:"bottom-center", size:[104,104], text:"技3", fontSize:20, bold:true, sprite:"round", color:"#4a5163" },
+      { op:"row", ids:["sk1","sk2","sk3"], gap:26, offset:[0,110], anchor:"bottom-center" },
+    ]};
+  } else {
+    plan = { summary:"竖屏主菜单：顶部状态条 + 标题副标题 + 中部主 CTA + 底部次级按钮一排", ops:[
+      { op:"clear" }, BG,
+      { op:"add", id:"coins", type:"panel", name:"Coins", anchor:"top-left", offset:[18,-18], size:[160,48], color:"rgba(255,255,255,0.14)", sprite:"pill" },
+      { op:"add", id:"coinsT", parent:"coins", type:"text", name:"CoinText", anchor:"stretch", size:[-16,0], text:"💰 1280", fontSize:18, textColor:"#ffe08a", bold:true },
+      { op:"add", id:"setBtn", type:"button", name:"SettingsBtn", anchor:"top-right", offset:[-18,-18], size:[48,48], text:"⚙", fontSize:22, bold:true, sprite:"round" },
+      { op:"add", id:"title", type:"text", name:"Title", anchor:"top-center", offset:[0,-160], size:[520,86], text:title, fontSize:50, textColor:"#ffca62", bold:true },
+      { op:"add", id:"sub", type:"text", name:"Subtitle", anchor:"top-center", offset:[0,-244], size:[440,32], text:"点击开始你的第一局", fontSize:16, textColor:"#c8ccd6" },
+      { op:"add", id:"play", type:"button", name:"PlayBtn", anchor:"center", offset:[0,40], size:[320,88], text:"开始游戏", fontSize:28, bold:true, shadow:true },
+      { op:"add", id:"shop", type:"button", name:"ShopBtn", anchor:"bottom-center", size:[168,60], text:"商店", fontSize:18, bold:true },
+      { op:"add", id:"rank", type:"button", name:"RankBtn", anchor:"bottom-center", size:[168,60], text:"排行榜", fontSize:18, bold:true },
+      { op:"add", id:"more", type:"button", name:"MoreBtn", anchor:"bottom-center", size:[168,60], text:"更多", fontSize:18, bold:true, color:"#4a5163" },
+      { op:"row", ids:["shop","rank","more"], gap:20, offset:[0,150], anchor:"bottom-center" },
+    ]};
+  }
+  if (!append) plan.screen = { w: designW, h: designH };
+  return plan;
+}
+
+/* ---------------- AI 模态交互 ---------------- */
+let aiModalInst = null, aiBusy = false;
+function openAIModal() {
+  fillAICfgForm();
+  if (!aiModalInst) aiModalInst = new bootstrap.Modal($("aiModal"));
+  aiModalInst.show();
+  setTimeout(() => { const t = $("aiPrompt"); if (t) t.focus(); }, 320);
+}
+function setAIBusy(on, label) {
+  aiBusy = on;
+  const b = $("aiRun"), b2 = $("aiRunLocal");
+  if (b)  { b.disabled = on;  b.innerHTML = on ? '<span class="ai-busy"></span> ' + (label || "生成中…") : "✨ 生成并排版"; }
+  if (b2) b2.disabled = on;
+}
+function renderAIResult(via, viaLocal, plan, log, errMsg) {
+  const box = $("aiResult");
+  if (!box) return;
+  let html = "";
+  if (errMsg) html += '<div class="ai-log mb-2"><div class="err">' + esc(errMsg) + "</div></div>";
+  if (via) html += '<div class="mb-1">生成来源：<span class="ai-badge' + (viaLocal ? " local" : "") + '">' + esc(via) + "</span>"
+                 + '<span class="text-secondary ms-2" style="font-size:11.5px">共 ' + ((plan && plan.ops && plan.ops.length) || 0) + " 条 API 指令 · Ctrl+Z 可整轮撤销</span></div>";
+  if (plan && plan.summary) html += '<div class="ai-summary">💡 ' + esc(plan.summary) + "</div>";
+  if (log && log.length) {
+    html += '<div class="ai-log">' + log.map(l => '<div class="' + (l.cls || "") + '">' + esc(l.msg) + "</div>").join("") + "</div>";
+  }
+  if (plan) {
+    html += '<details class="mt-2"><summary class="text-secondary" style="font-size:12px;cursor:pointer">查看 AI 调用的原始 API 指令（JSON）</summary>'
+          + '<div class="ai-spec mt-1">' + esc(JSON.stringify(plan, null, 2)) + "</div></details>";
+  }
+  box.innerHTML = html;
+}
+async function aiGenerate(forceLocal) {
+  if (aiBusy) return;
+  const prompt = ($("aiPrompt").value || "").trim();
+  if (!prompt) { flashToast("先用一句话描述你想要的界面"); $("aiPrompt").focus(); return; }
+  const append = $("aiScopeAppend").checked;
+  let plan = null, via = "", viaLocal = false, errMsg = "";
+  setAIBusy(true, forceLocal ? "本地生成中…" : "AI 思考中…");
+  try {
+    if (forceLocal) { plan = localPlanner(prompt, append); via = "离线规则引擎"; viaLocal = true; }
+    else {
+      try {
+        plan = await callAI(prompt, append);
+        via = "AI · " + readAICfgFromForm().model;
+      } catch (e) {
+        if (String(e.message) === "NO_KEY") { errMsg = "未配置 API Key，已改用内置离线规则引擎（可在「⚙ AI 接口设置」里填 Key）。"; }
+        else { errMsg = "AI 调用失败：" + e.message + "\n已自动回退到内置离线规则引擎。"; }
+        plan = localPlanner(prompt, append); via = "离线规则引擎（回退）"; viaLocal = true;
+      }
+    }
+    const log = runAIOps(plan, append);
+    renderAIResult(via, viaLocal, plan, log, errMsg);
+    flashToast("已生成 " + ((plan.ops && plan.ops.length) || 0) + " 条排版指令（Ctrl+Z 撤销）");
+  } catch (e) {
+    renderAIResult("", false, null, null, "生成失败：" + e.message);
+  } finally {
+    setAIBusy(false);
+  }
+}
+$("btnAI").addEventListener("click", openAIModal);
+$("aiRun").addEventListener("click", () => aiGenerate(false));
+$("aiRunLocal").addEventListener("click", () => aiGenerate(true));
+$("aiSaveCfg").addEventListener("click", saveAICfg);
+$("aiClearCfg").addEventListener("click", () => { $("aiKey").value = ""; saveAICfg(); });
+$("aiTestConn").addEventListener("click", testAIConnection);
+$("aiToggleCfg").addEventListener("click", () => {
+  const b = $("aiCfgBox"); b.style.display = b.style.display === "none" ? "" : "none";
+});
+$("aiToggleSpec").addEventListener("click", () => {
+  const b = $("aiSpecBox"); b.style.display = b.style.display === "none" ? "" : "none";
+  $("aiSpecText").textContent = AI_API_SPEC;
+});
+$("aiPreset").addEventListener("change", () => {
+  const p = AI_PRESETS[$("aiPreset").value];
+  if (p) { $("aiBase").value = p.base; $("aiModel").value = p.model; }
+});
+document.querySelectorAll("[data-ai-ex]").forEach(c => {
+  c.addEventListener("click", () => { $("aiPrompt").value = c.dataset.aiEx; $("aiPrompt").focus(); });
+});
+$("aiPrompt").addEventListener("keydown", ev => {
+  if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") { ev.preventDefault(); aiGenerate(false); }
+});
+
+/* ---------------- 初始化 ---------------- */
+updateAIStatus();
+initDocs();
+render();
+</script>
+</body>
+</html>

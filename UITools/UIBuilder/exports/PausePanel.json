@@ -1,0 +1,55 @@
+{
+  "format": "ui-builder",
+  "version": 2,
+  "docId": "soko_pause",
+  "docName": "PausePanel",
+  "meta": { "screenWidth": 1280, "screenHeight": 720, "exportMode": "full" },
+  "tree": [
+    {
+      "name": "Dim", "type": "panel", "id": "pause_dim",
+      "rect": { "anchorMin": [0,0], "anchorMax": [1,1], "pivot": [0.5,0.5], "pos": [0,0], "size": [0,0] },
+      "style": { "color": "rgba(30,20,5,0.52)", "sprite": "none", "raycast": true },
+      "children": []
+    },
+    {
+      "name": "Card", "type": "panel", "id": "pause_card",
+      "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [0,0], "size": [480,540] },
+      "style": { "color": "rgba(255,252,244,0.97)", "sprite": "round", "raycast": true, "shadow": true },
+      "children": [
+        {
+          "name": "TopAccent", "type": "panel", "id": "pause_accent",
+          "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-36], "size": [120,10] },
+          "style": { "color": "#E8B931", "sprite": "round", "raycast": false },
+          "children": []
+        },
+        {
+          "name": "PauseTitle", "type": "text", "id": "pause_title",
+          "rect": { "anchorMin": [0.5,1], "anchorMax": [0.5,1], "pivot": [0.5,1], "pos": [0,-88], "size": [400,72] },
+          "text": { "content": "已暂停", "fontSize": 48, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "children": []
+        },
+        {
+          "name": "BtnResume", "type": "button", "id": "pause_btn_resume",
+          "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [0,60], "size": [400,104] },
+          "text": { "content": "继续游戏", "fontSize": 36, "color": "#412402", "align": "middle-center", "bold": true, "lineSpacing": 1 },
+          "style": { "color": "#FFC857", "sprite": "round", "raycast": true, "shadow": true },
+          "children": []
+        },
+        {
+          "name": "BtnReplay", "type": "button", "id": "pause_btn_replay",
+          "rect": { "anchorMin": [0.5,0.5], "anchorMax": [0.5,0.5], "pivot": [0.5,0.5], "pos": [0,-68], "size": [400,92] },
+          "text": { "content": "重玩本关", "fontSize": 30, "color": "#6B5B45", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+          "style": { "color": "#F5EDD8", "sprite": "round", "raycast": true, "shadow": true },
+          "children": []
+        },
+        {
+          "name": "BtnMenu", "type": "button", "id": "pause_btn_menu",
+          "rect": { "anchorMin": [0.5,0], "anchorMax": [0.5,0], "pivot": [0.5,0], "pos": [0,56], "size": [400,92] },
+          "text": { "content": "回主菜单", "fontSize": 30, "color": "#6B5B45", "align": "middle-center", "bold": false, "lineSpacing": 1 },
+          "style": { "color": "#F5EDD8", "sprite": "round", "raycast": true, "shadow": true },
+          "children": []
+        }
+      ]
+    }
+  ]
+}

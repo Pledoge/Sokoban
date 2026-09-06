@@ -7,7 +7,8 @@ namespace Sokoban.Game
 
     /// <summary>
     /// 棋盘渲染器：把 WorldState 画成 SpriteRenderer 网格。
-    /// 纹理全部程序化生成（纯色/圆角），零美术依赖 —— 美术到位后只替换 Sprite 引用。
+    /// 素材优先从 Resources/Art/ 加载（AI 生成奶蛙暖金风）；缺失时回退程序化纯色块。
+    /// 层次：地板(0) → 墙/障碍/终点标记(1) → 箱子/玩家/敌人(2)；箱子推上终点换金色皮肤。
     /// </summary>
     public class BoardRenderer : MonoBehaviour
     {
@@ -16,8 +17,20 @@ namespace Sokoban.Game
         WorldState _state;
         readonly List<SpriteRenderer> _pool = new List<SpriteRenderer>();
         Dictionary<CellType, Sprite> _sprites;
+        Sprite _boxOnGoal;
 
-        static readonly Dictionary<CellType, Color> Colors = new Dictionary<CellType, Color>
+        static readonly Dictionary<CellType, string> ArtNames = new Dictionary<CellType, string>
+        {
+            { CellType.Empty,    "floor"        },   // 地板砖
+            { CellType.Wall,     "wall"         },
+            { CellType.Obstacle, "obstacle"     },
+            { CellType.Goal,     "goal"         },
+            { CellType.Box,      "box"          },
+            { CellType.Player,   "player"       },
+            { CellType.Enemy,    "enemy"        },
+        };
+
+        static readonly Dictionary<CellType, Color> FallbackColors = new Dictionary<CellType, Color>
         {
             { CellType.Empty,    new Color(0.97f, 0.96f, 0.90f) },   // 奶油白
             { CellType.Wall,     new Color(0.42f, 0.38f, 0.35f) },   // 灰咖
@@ -58,16 +71,38 @@ namespace Sokoban.Game
                 bool isPlayer = _state.Player == p;
                 bool isEnemy = _state.HasEnemy && _state.Enemy == p;
 
-                CellType visual = t;
-                if (box) visual = CellType.Box;
-                if (isEnemy) visual = CellType.Enemy;
-                if (isPlayer) visual = CellType.Player;
-                if (visual == CellType.Empty && !box && !isPlayer && !isEnemy) continue; // 空地不画
+                var pos = new Vector3(origin.x + x, origin.y + y, 0);
 
-                var r = GetRenderer(need++);
-                r.transform.localPosition = new Vector3(origin.x + x, origin.y + y, 0);
-                r.sprite = _sprites[visual];
-                r.sortingOrder = (visual == CellType.Box || visual == CellType.Player || visual == CellType.Enemy) ? 1 : 0;
+                // —— 地板层（0）：墙/障碍之外都铺地板砖 ——
+                if (t != CellType.Wall && t != CellType.Obstacle)
+                {
+                    var f = GetRenderer(need++);
+                    f.transform.localPosition = pos;
+                    f.sprite = _sprites[CellType.Empty];
+                    f.sortingOrder = 0;
+                }
+
+                // —— 地形层（1）：墙 / 障碍 / 终点标记 ——
+                if (t == CellType.Wall || t == CellType.Obstacle || t == CellType.Goal)
+                {
+                    var r = GetRenderer(need++);
+                    r.transform.localPosition = pos;
+                    r.sprite = _sprites[t];
+                    r.sortingOrder = 1;
+                }
+
+                // —— 动态层（2）：箱子 / 玩家 / 敌人 ——
+                CellType visual;
+                if (isPlayer)      visual = CellType.Player;
+                else if (isEnemy)  visual = CellType.Enemy;
+                else if (box)      visual = CellType.Box;
+                else continue;
+
+                var d = GetRenderer(need++);
+                d.transform.localPosition = pos;
+                d.sprite = (visual == CellType.Box && t == CellType.Goal && _boxOnGoal != null)
+                    ? _boxOnGoal : _sprites[visual];
+                d.sortingOrder = 2;
             }
 
             for (int i = need; i < _pool.Count; i++) _pool[i].gameObject.SetActive(false);
@@ -90,13 +125,23 @@ namespace Sokoban.Game
         {
             if (_sprites != null) return;
             _sprites = new Dictionary<CellType, Sprite>();
-            foreach (var kv in Colors)
+            foreach (var kv in ArtNames)
             {
-                bool rounded = kv.Key == CellType.Player || kv.Key == CellType.Enemy
-                            || kv.Key == CellType.Box || kv.Key == CellType.Goal;
-                _sprites[kv.Key] = MakeSprite(kv.Value, rounded);
+                // 优先加载 AI 生成的美术素材（256px，PPU=256 → 恰好 1 格 1 单位）
+                var tex = Resources.Load<Texture2D>("Art/" + kv.Value);
+                _sprites[kv.Key] = tex != null
+                    ? Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height),
+                                    new Vector2(0.5f, 0.5f), tex.width)
+                    : MakeSprite(FallbackColors[kv.Value], IsRounded(kv.Key));
             }
+            var goldTex = Resources.Load<Texture2D>("Art/box_on_goal");
+            if (goldTex != null)
+                _boxOnGoal = Sprite.Create(goldTex, new Rect(0, 0, goldTex.width, goldTex.height),
+                                           new Vector2(0.5f, 0.5f), goldTex.width);
         }
+
+        static bool IsRounded(CellType t)
+            => t == CellType.Player || t == CellType.Enemy || t == CellType.Box || t == CellType.Goal;
 
         static Sprite MakeSprite(Color c, bool rounded)
         {

@@ -48,7 +48,10 @@ namespace Sokoban.Core
                     case CellType.Box:
                     case CellType.BoxOnGoal:
                         boxes.Add(new Vec2Int(x, y));
-                        Terrain[lv.Index(x, y)] = (int)CellType.Empty; // 箱子是动态对象，地形视为空
+                        // 箱子是动态对象；「箱在终点上」的地形要还原成 Goal，否则终点数缺失导致无解
+                        Terrain[lv.Index(x, y)] = c == CellType.BoxOnGoal
+                            ? (int)CellType.Goal
+                            : (int)CellType.Empty;
                         break;
                     case CellType.Player:
                     case CellType.Enemy:

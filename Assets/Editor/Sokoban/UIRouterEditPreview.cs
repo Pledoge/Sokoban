@@ -50,7 +50,7 @@ namespace Sokoban.EditorTools
             UnityEditor.EditorWindow gv = null;
             foreach (var win in Resources.FindObjectsOfTypeAll<UnityEditor.EditorWindow>())
             {
-                if (win.GetType() == _gvType && win.isVisible) { gv = win; break; }
+                if (win.GetType() == _gvType) { gv = win; break; }   // 该版本 EditorWindow 无公开 isVisible，取第一个即可
             }
             if (gv == null) return null;
 

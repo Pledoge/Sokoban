@@ -2,7 +2,8 @@
 
 > 本文档约定实现层的数据结构、算法、模块与接口。命名以本文档为准。
 >
-> **版本**：v3（2026-09-06）—— 编辑器双形态 / 混合求解器 / 平台适配 / UI 走 UI Builder。
+> **版本**：v4（2026-09-07）—— 关卡来源分类 / 局内美术加载管线 / 编辑器能力增强 / 求解器与渲染 bug 修复。
+> v3 内容：编辑器双形态 / 混合求解器 / 平台适配 / UI 走 UI Builder。
 
 ## 1. 引擎与依赖
 
@@ -55,16 +56,22 @@ public class LevelData {
     public Mode   mode;        // Classic / Extended
     public int    width;
     public int    height;
-    public string author;      // 编辑器写入
-    public int[][] cells;      // cells[y][x]，范围 [0, height) × [0, width)
+    public string author;      // 编辑器写入 / 导入集署名
+    public string source;      // v4："" 内置 / "custom" 自制 / "imported" 导入（选关分类依据）
+
+    public int[] cells;        // ⚠️ 扁平存储：index = y * width + x（JsonUtility 不支持锯齿数组）
+                               // 允许出现 Box / BoxOnGoal / Player 等「放置语义」，加载时由 WorldState 分离
     public Vec2Int playerSpawn;   // 经典模式可省略
-    public Vec2Int enemySpawn;    // 拓展模式可省略
+    public Vec2Int enemySpawn;    // 拓展模式可省略（界外值 -99 表示不存在）
 }
 
 public enum Mode { Classic = 0, Extended = 1 }
 
 [Serializable] public struct Vec2Int { public int x; public int y; }
 ```
+
+> **v4 注意**：`source` 缺省为 `""`（内置）。编辑器 `DoSave` 会强制写 `source = "custom"`，
+> 导入器产出 `source = "imported"`；`DeepClone()` 必须同步拷贝该字段，否则试玩时分类丢失。
 
 ### 2.3 `WorldState`（运行时世界状态）
 
@@ -73,19 +80,27 @@ public enum Mode { Classic = 0, Extended = 1 }
 ```csharp
 public class WorldState {
     // 静态地形（不可变）
-    public int[,] terrain;   // 仅含 Empty/Wall/Obstacle/Goal
+    public int[] terrain;   // 扁平：仅含 Empty/Wall/Obstacle/Goal（index = y*width+x）
     public int width, height;
 
     // 动态对象
     public Vec2Int player;
-    public Vec2Int? enemy;     // null = 不存在（经典模式）
-    public List<Vec2Int> boxes; // 全部箱子当前坐标
+    public bool hasEnemy;
+    public Vec2Int enemy;      // hasEnemy=false 时无意义
+    public Vec2Int[] boxes;    // 全部箱子当前坐标（始终保持按 Index 排序，保证 Hash 稳定）
 
     // 派生（按需重算，不存盘）
-    public bool AllBoxesOnGoal() { ... }
-    public CellType At(Vec2Int p); // 取地形层 cell
+    public bool AllBoxesOnGoal() { ... }   // 空箱关卡返回 false（否则会锁死操作）
+    public CellType At(Vec2Int p);         // 取地形层 cell（界外返回 Wall）
+    public bool IsGoal(Vec2Int p);
 }
 ```
+
+> ⚠️ **v4 关键修复 · `BoxOnGoal` 的地形语义**：
+> 关卡文件里 `BoxOnGoal(5)` 表示"箱子初始就在终点上"。`WorldState` 构造时必须
+> **把它还原成 `Goal` 地形 + 记一个箱子**，而不是写成 `Empty`。
+> 写成 `Empty` 会丢掉终点 → 箱子数 > 终点数 → 关卡**永远无法通关**（带 `*`/`+` 的关卡全中招）。
+> 这是"编辑器放置语义"与"运行时地形"转换处最容易漏的一条。
 
 ### 2.4 `MoveSnapshot`（撤销栈元素）
 
@@ -273,6 +288,16 @@ Sokoban 解判定是 PSPACE-complete。v3 采用**按箱子数自动切换**的�
 
 > ⚠️ 反向搜索里的死锁语义要**反过来理解**：正向是"箱子推到这里就完了"，反向是"箱子从这个位置拉不出来"。
 > 实现上可以对 dead square 表做一次转置复用，但**必须写单元测试单独验证反向的剪枝不会误杀**。
+
+**v4 实测踩坑（两条都已修，改这里务必回归）**：
+
+| 坑 | 现象 | 根因 | 修法 |
+|---|---|---|---|
+| **竖直方向判界用错行列** | `IndexOutOfRangeException`，w > h 的关卡（如 16×12）必崩 | `MarkWallLineDead(horizontal:false)` 的 `wallAt` 用 `k`（行号）判断左右邻居 `±1` 的边界，应为**列号 `a`** | 竖直分支改 `(a > 0 …) || (a < w - 1 …)` |
+| **贴墙段遇 Goal 直接断段** | 含终点的贴墙段被误标死格 → **可解关卡被判无解**（比崩溃更隐蔽） | 段扫描遇到非 `Empty` 就 `break`，`hasGoal` 永远为 false | 段内允许 `Empty / Goal`；遇 `Goal` 记 `hasGoal = true`，不再断段 |
+
+> 另：外墙闭合校验（`LevelValidator`）的洪水填充同样把 **Obstacle 视为阻挡**（与 `SokobanRules.IsBlocked` 语义一致），
+> 否则障碍围出的区域会被算作"外部"。
 
 ### 4.3 正向 BFS
 
@@ -481,6 +506,19 @@ public class LevelEditorCore {
 public enum EditorTool { Wall, Player, Enemy, Box, Goal, Obstacle, Erase }
 ```
 
+**v4 运行时壳（`GameEditorShell`）已落地的交互**：
+
+| 能力 | 实现要点 |
+|---|---|
+| **拖动连刷** | 格子挂 `IPointerEnterHandler/IPointerExitHandler` → `OnCellHover`；`Update` 监听鼠标按下清笔划集合并原地落笔；`HashSet<long>` 去重保证**每格每笔只变一次**；单击走同一条去重路径（避免同格重复撤销步） |
+| **唯一对象整盘刷新** | 玩家 / 敌人放置会清掉旧位置的数据 → 成功后调 `RefreshAll()` 而非单格刷新（否则旧格残留颜色，看起来像"多个出生点"） |
+| **名称输入** | 页内运行时生成 `InputField`（`LE_Name`），`DoSave` 写入 `Data.name`；id 缺省时派生（ASCII 名直接用作文件名，含中文用时间戳） |
+| **试玩闭环** | `DoPlayTest` → `PlayCustomLevel`（克隆数据，不落盘）→ 暂停页 / 结算页出现「返回编辑器」（`CameFromEditor` 标记） |
+| **保存即生效** | `DoSave` 写盘 + `AssetDatabase.Refresh()`；选关页每次进入调 `GameBootstrap.ReloadLevels()` 重扫目录 |
+
+> ⚠️ **运行时新增 UI 节点（试玩按钮、名称输入框、分类标签等）一律走「存在性守护 + 运行时生成」**，
+> 不改 prefab —— 用户手调过的 UI 位置才不会被覆盖。
+
 > **为什么核心层不碰 `UnityEditor` / `UnityEngine.UI`**：
 > 一旦引用，`EditorCore` 就只能跑在编辑器里，运行时形态直接报废。
 > 文件读写同理 —— 核心层只产出/消费 JSON **字符串**，由壳决定写到哪。
@@ -607,8 +645,29 @@ public class SafeAreaApplier : MonoBehaviour {
 
 | 资产类型 | 产出方式 | 落盘位置 |
 |---|---|---|
-| **游戏内素材**（角色 / 箱子 / 地砖 / 背景） | AI 生图 `ImageGen`，按 [03-ArtBible](./03-美术资源文档(ArtBible).md) 清单 | `Assets/Art/Sprites/` |
+| **游戏内素材**（角色 / 箱子 / 地砖 / 墙 / 障碍 / 终点） | AI 生图 `ImageGen` → Python 批处理（去底 / 裁水印 / 256px） | `Assets/Resources/Art/`（v4 实际路径） |
 | **UI 界面**（菜单 / HUD / 编辑器面板 / 结算） | **UI Builder** 网页排版 → 导出 JSON → Unity 导入器生成 prefab | `Assets/UIBuilder/` |
+
+### 6.1 局内素材管线（v4 已跑通）
+
+```text
+① ImageGen 生 1024×1024，统一风格前缀（奶蛙暖金 / 粗描边 / 纯背景）
+② process.py：边缘泛白 BFS 去底 → 预裁 6% 去 AI 角落水印 → 按 alpha bbox 裁切 → 补方形留白 → 256×256
+③ 落 Assets/Resources/Art/{player,enemy,box,box_on_goal,goal,wall,obstacle,floor}.png
+④ BoardRenderer 运行时 Resources.Load<Texture2D> + Sprite.Create（PPU = 图宽 → 恰好 1 格 1 单位）
+⑤ 缺图自动回退程序化色块（纯色 / 圆角），美术不阻塞逻辑
+```
+
+| 素材 | 用途 |
+|---|---|
+| `player` / `enemy` | 奶蛙推箱手 / 邪恶推箱人 |
+| `box` / `box_on_goal` | 木箱 / 推上终点后的**金色发光皮肤**（v4 新增表现） |
+| `goal` / `wall` / `obstacle` | 终点标记 / 砖墙 / 深咖岩石 |
+| `floor` | 奶油棋盘格地板砖（v4 新增：非墙格铺满，关卡区域更清晰） |
+
+> **渲染分层**（`BoardRenderer.Rebuild`）：地板 0 → 墙 / 障碍 / 终点 1 → 箱子 / 玩家 / 敌人 2。
+
+### 6.2 UI 管线
 
 **UI Builder 工作流**：
 
@@ -624,6 +683,21 @@ public class SafeAreaApplier : MonoBehaviour {
 
 > **为什么 UI 走工具而不是手写**：多分辨率适配（9:16 / 9:19.5 / 9:21 / 16:9）在工具里是**切换下拉就能预览**的，手写 uGUI 要反复进 Unity 改锚点试。
 > 这也是本题「工具提效」叙事里最硬的一条 —— 见 [04-流程文档 §2](./04-制作流程与工具提效记录.md)。
+
+**屏幕比例适配引擎（`UIRouter`）· v4 结论**：
+
+| 项 | 做法 |
+|---|---|
+| 缩放方式 | 各页 `CanvasScaler` 设为 `ConstantPixelSize` + `dynamicPixelsPerUnit = 2`，由 `UIRouter` 按 `scaleFactor = min(屏宽/设计宽, 屏高/设计高)` 驱动（**单倍缩放**，文字不发虚） |
+| 竖屏 / 横屏 | 竖屏用设计稿原始布局，横屏切换横版预设（只改部分节点宽度，不动锚点） |
+| 编辑态预览 | `Assets/Editor/Sokoban/UIRouterEditPreview.cs`（`[InitializeOnLoad]` + `EditorApplication.update`）在**未进 Play** 时用同一套公式接管缩放，预览与 Play 一致 |
+| ⚠️ 尺寸来源 | 编辑态**不能**用 `Screen.width/height`（它随当前重绘视口变化，鼠标在 Scene / Game 间移动会"飘"）；必须反射读 `GameView.targetSize`，并做尺寸变化检测 |
+
+> ⚠️ **踩坑 · 一个 `.cs` 文件只放一个 `MonoBehaviour`**：
+> Unity 的 GUID 脚本引用只可靠解析「类名 = 文件名」的主类。曾把 `UIBuilderNodeId` 与 `UIBuilderDoc`
+> 放进同一个 `UIBuilderNodeIds.cs`，导致 `UIBuilderDoc` 在场景与 6 个 prefab 上全部 **missing script**。
+> 修法：`UIBuilderDoc` 拆成独立文件，并用 Python 按「含 `docId` 字段的块」批量重写所有 `m_Script` 引用。
+> **排查手法**：用 Unity MCP `execute_code` 扫 `FindObjectsOfType<GameObject>()` 的 null Component —— 比看控制台警告可靠（导入期会有瞬态误报）。
 
 **临时占位**：色块占位跑通逻辑，落 `Assets/Art/_Placeholder/`，后续替换。
 游戏素材统一 64×64 / pivot center。

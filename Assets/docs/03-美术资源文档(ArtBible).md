@@ -3,7 +3,10 @@
 > 美术风格统一关键词：**奶蛙 · Q 弹 · 圆润 · 暖色 + 烫金点缀**
 > 所有素材优先用 AI 生图（`ImageGen`），不合格的进二次 inpaint，未通过的用色块占位。
 >
-> **版本**：v3（2026-09-06）—— **UI 部分改为走 UI Builder 产出**（§4），游戏素材仍走 AI 生图。
+> **版本**：v4（2026-09-07）—— **局内素材已落地**（8 张，见 §3.1）；**UI 部分走 UI Builder 产出**（§4）。
+>
+> **v4 交付状态**：局内 8 张素材已生成并处理完毕，落 `Assets/Resources/Art/`，由 `BoardRenderer` 运行时加载；
+> 角色**多方向动作帧（§2.1 / §2.2）尚未产出**，当前表现为单帧静态（不影响玩法，列为后续项）。
 
 ---
 
@@ -69,12 +72,22 @@ game asset, no text, no watermark.
 | 4 | `villain_fail.png` | 撞玩家取消（动不了） | `evil twin frog tripped, dust cloud, frustrated face` |
 | 5 | `villain_bump.png` | **撞墙顶一下**（v2：敌人与玩家解耦后会频繁单独撞墙，需要独立反馈） | `evil twin frog bracing against a wall, purple cape pressed flat, annoyed but focused, small impact star` |
 
-### 2.3 生图 → Sprite 切割流程
+### 2.3 生图 → 可用素材流程（v4 实际管线）
 
-1. 用 `ImageGen` 生成 1024×1024 主图（含 4 方向横排）。
-2. 落 `Assets/Art/Source/<角色>/<动作>.png`。
-3. 在 Unity 内 Import → Sprite Editor → 切 256×256 × 4。
-4. 输出 `Assets/Art/Sprites/<角色>/<动作>.png`（已切片）。
+```text
+① ImageGen 生 1024×1024（transparent 背景 + 风格前缀）
+② 批处理脚本 .workbuddy-img/process.py：
+   a. 边缘泛白 BFS 去底（只移除与画布边缘连通的近白像素，不伤轮廓内部）
+   b. 预裁四边 ~6% —— 去 AI 生图右下角水印
+   c. 按 alpha bbox 裁切 → 补方形留白（物件 10%，贴图 2%）→ 缩放 256×256
+③ 落盘 Assets/Resources/Art/<名字>.png
+④ BoardRenderer 运行时 Resources.Load<Texture2D> + Sprite.Create（PPU = 图宽 → 1 格 = 1 单位）
+⑤ 缺图自动回退程序化色块 —— 美术永远不阻塞逻辑
+```
+
+> ⚠️ **踩坑记录**：① 带内部空格的行别用「去空格后的字符集」判断是否地图行（会整行丢弃）；
+> ② AI 图角落几乎必有水印，整图素材（墙 / 地板）裁 6% 再补边不伤观感；③ 首版不满意的直接重生成
+> （墙首版画成了"石子托盘"、障碍颜色过浅，均已重出）。
 
 ---
 
@@ -89,9 +102,23 @@ game asset, no text, no watermark.
 | 终点激活态 | 箱子已上 + 同色淡金光 | 同上但饱和度 +30%，加星星 |
 | 外墙 | 64×64，石砖 + 金描边 | `stone brick wall, rounded top-down block, gold edge highlight` |
 | 障碍（荆棘） | 64×64，深咖 + 紫尖刺 | `dark thorn bush obstacle, spiky top-down, deep purple accents` |
-| 地砖（默认） | 64×64，奶油白 + 浅金格子 | `cream tile with thin gold grid lines, top-down game floor` |
-| 地砖（拓展模式） | 同上加一圈暗金底纹 | `cream tile with dark gold border, ominous` |
+| 地砖（默认） | 单格，奶油白 + 浅金格子 | `soft cream ivory floor tile, checkerboard, top-down` |
 | 背景 | 1920×1080 远景 | `warm cozy fantasy library back hall, blurred, bokeh` |
+
+### 3.1 已交付素材清单（v4 · `Assets/Resources/Art/`）
+
+| 文件 | 对应物件 | 备注 |
+|---|---|---|
+| `player.png` | 奶蛙推箱手（单帧） | 奶油肚 + 奶绿背，大眼 |
+| `enemy.png` | 邪恶推箱人（单帧） | 紫红 + 怒眉獠牙 + 小角 |
+| `box.png` | 木箱 | 木纹 + 金色角件与绑带 |
+| `box_on_goal.png` | 金色箱子 | 箱子推上终点自动切换（`BoardRenderer` 按地形判断） |
+| `goal.png` | 终点标记 | 金环 + ✦ + 奶油底垫 |
+| `wall.png` | 外墙 | 砖纹满格贴图（裁 6% 去水印后重新补边） |
+| `obstacle.png` | 障碍岩石 | 深巧克力棕，与木箱拉开色差（首版过浅已重出） |
+| `floor.png` | 地板砖 | 奶油棋盘格，非墙格铺满（v4 新增表现） |
+
+> 渲染分层：地板(0) → 墙/障碍/终点(1) → 箱子/玩家/敌人(2)。UI 侧已有素材在 `Assets/Resources/UI/`（`bg_main` / `btn_primary` / `hud_panel` / `logo_frog` / `Round` 九宫格）。
 
 ---
 
@@ -181,34 +208,27 @@ game asset, no text, no watermark.
 
 ---
 
-## 6. 临时占位策略
+## 6. 临时占位策略（v4：程序化兜底）
 
-> 生图未及时出来的部分，先用 Unity 内置 placeholder：
-> - 角色：`Texture2D` 圆形 + 单色填充 + 黑描边
-> - 箱子：Unity URP `Lit` 立方体 + 棕色
-> - 终点：黄色 `Sprite` 圆环
-> - 墙：深灰 `Sprite` 方块
-
-> 所有占位资源集中在 `Assets/Art/_Placeholder/`，方便后续一键替换。
-
----
+> 占位不再走 `_Placeholder/` 目录，改为 **`BoardRenderer` 程序化兜底**：
+> 素材缺失时按 `FallbackColors` 画纯色 / 圆角色块（64px 程序纹理）。
+> 好处：删掉任何一张 `Resources/Art/*.png`，游戏照跑，只是变回色块 —— 美术与逻辑彻底解耦。
 
 ## 7. 验收 Checklist
 
-**游戏素材（AI 生图）**
+**游戏素材（AI 生图）· v4 状态**
 
-- [ ] 主角 9 张动作齐（含 `hero_bump`）
-- [ ] 反派 5 张动作齐（含 `villain_bump`）
-- [ ] 场景物件 10 类齐
-- [ ] 所有 PNG 切片后导出 `Sprite` 模式，能被 Unity 直接引用
-- [ ] 美术配色与 §1.2 一致（差异 ≤ 5%）
-- [ ] 临时占位替换比 ≥ 60%
+- [x] 场景物件 8 类齐（玩家 / 敌人 / 木箱 / 金箱 / 终点 / 墙 / 障碍 / 地板）
+- [x] 所有 PNG 为透明背景、256×256、中心 pivot，`BoardRenderer` 可直接加载
+- [x] 美术配色与 §1.2 一致（暖金系）
+- [x] 程序化占位兜底可用（删图即回退）
+- [ ] 主角 / 反派多方向动作帧（§2.1 / §2.2 的 4 方向 + bump 表情）—— **后续项**，当前单帧
+- [ ] 背景远景图
 
 **UI（UI Builder 产出）**
 
-- [ ] 7 套 UI 全部在工具里排版完成并导出 JSON
-- [ ] 每套 UI 在 9:16 / 9:19.5 / 9:21 / 16:9 四个比例下**逐个切过，无遮挡无溢出**
-- [ ] 7 套 prefab 全部导入 `Assets/UIBuilder/`
-- [ ] `onClick` 全部写在独立脚本里（不在 prefab 上直接挂），重导入不丢
-- [ ] UI 用图（Logo / 按钮底 / 5 个 HUD 图标 / 7 个编辑器图标）齐
-- [ ] UI 配色与游戏素材一致（共用 §1.2 色卡）
+- [x] 6 套 UI 排版完成并导入 `Assets/UIBuilder/`（主菜单 / 选关 / HUD / 暂停 / 结算 / 编辑器）
+- [x] 1080×1920（用户手调稿）与 16:9 下无遮挡无溢出（编辑态预览与 Play 共用同一套缩放引擎）
+- [x] `onClick` 全部写在独立脚本里（不在 prefab 上直接挂），重导入不丢
+- [ ] HUD 图标化（当前为文字按钮）
+- [x] UI 配色与游戏素材一致（共用 §1.2 色卡）

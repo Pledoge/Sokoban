@@ -157,7 +157,7 @@ namespace Sokoban.Game
         }
 
         // ------------------------------------------------------- 名称输入框（运行时生成，免改 prefab）
-        /// <summary>页面顶部中间加一个关卡名称输入框，保存时写入 Data.name。</summary>
+        /// <summary>顶部 Header 内、「返回」按钮右侧加关卡名称输入框，保存时写入 Data.name。</summary>
         void EnsureNameInput()
         {
             if (DeepFind(transform, "LE_Name") != null) return;
@@ -166,12 +166,21 @@ namespace Sokoban.Game
             var anyText = GetComponentInChildren<Text>(true);
             if (anyText != null) font = anyText.font;
 
+            // 挂进 Header 与原生按钮同排（此前挂在页面根，坐标错排还压住了「返回」按钮）。
+            var back = DeepFind(transform, "BtnBack") as RectTransform;
+            var parent = back != null ? back.parent : transform;
+
             var go = new GameObject("LE_Name");
-            go.transform.SetParent(transform, false);
+            go.transform.SetParent(parent, false);
             var rt = go.AddComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f); rt.pivot = new Vector2(0f, 1f);
-            rt.anchoredPosition = new Vector2(20, -22);        // 顶部左侧，避开右上用户手调的「试玩」按钮
-            rt.sizeDelta = new Vector2(420, 64);
+            // x 取「返回」按钮右缘 + 16（跟随 prefab 手调位置，不硬编码）；
+            // y 与「返回」同款 -22，保证同一行对齐。
+            float backRight = back != null
+                ? back.anchoredPosition.x + back.sizeDelta.x * (1f - back.pivot.x)
+                : 140f;
+            rt.anchoredPosition = new Vector2(backRight + 16f, -22f);
+            rt.sizeDelta = new Vector2(400, 64);
             var img = go.AddComponent<Image>();
             img.color = new Color(1f, 1f, 1f, 0.94f);
             img.raycastTarget = true;
@@ -222,21 +231,26 @@ namespace Sokoban.Game
         }
 
         // ------------------------------------------------------- 试玩按钮（运行时克隆「校验」按钮，免改 prefab）
-        /// <summary>在编辑器页右上角加一个「试玩」按钮；页面不销毁，故用存在性守护避免重复。</summary>
+        /// <summary>Header 内「保存」按钮左侧加「试玩」按钮；页面不销毁，故用存在性守护避免重复。</summary>
         void EnsurePlayButton()
         {
             if (DeepFind(transform, "BtnPlay") != null) return;
             var tpl = DeepFind(transform, "BtnValidate");
             if (tpl == null) return;
-            // 竖版页被 UIRouter 包裹进「Content」容器后，运行时新增节点也要挂到容器内，保持同款缩放。
-            var parent = DeepFind(transform, "Content") ?? transform;
+            // 挂进 Header 与原生按钮同排（此前挂在页面根的右上 (-20,-22)，正好压住了「保存」按钮）。
+            var save = DeepFind(transform, "BtnSave") as RectTransform;
+            var parent = save != null ? save.parent : transform;
             var go = Instantiate(tpl.gameObject, parent, false);
             go.name = "BtnPlay";
             var rt = go.GetComponent<RectTransform>();
             rt.SetParent(parent, false);
             rt.anchorMin = rt.anchorMax = new Vector2(1, 1);
             rt.pivot = new Vector2(1, 1);
-            rt.anchoredPosition = new Vector2(-20, -22);
+            // x 取「保存」按钮左缘 - 16（跟随 prefab 手调位置，不硬编码）；y 同排 -22。
+            float saveLeft = save != null
+                ? save.anchoredPosition.x - save.sizeDelta.x * save.pivot.x
+                : -140f;
+            rt.anchoredPosition = new Vector2(saveLeft - 16f, -22f);
             rt.sizeDelta = new Vector2(140, 64);
             var label = go.GetComponentInChildren<Text>();
             if (label != null) label.text = "试玩";

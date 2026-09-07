@@ -91,8 +91,8 @@ namespace Sokoban.Game
             BindBtn("BtnWidth",    () => { Resize(+1, 0); });
             BindBtn("BtnHeight",   () => { Resize(0, +1); });
             BindBtn("BtnBack",     () => Sokoban.Game.UIRouter.I.Show(UIRouter.Page.MainMenu));
-            EnsureNameInput();
-            EnsurePlayButton();
+            BindNameInput();
+            BindPlayButton();
 
             RebuildGrid();
             RefreshToolHighlight();
@@ -156,60 +156,25 @@ namespace Sokoban.Game
             public void OnPointerExit(PointerEventData e)  { if (shell != null) shell.OnCellLeave(x, y); }
         }
 
-        // ------------------------------------------------------- 名称输入框（运行时生成，免改 prefab）
-        /// <summary>顶部 Header 内、「返回」按钮右侧加关卡名称输入框，保存时写入 Data.name。</summary>
-        void EnsureNameInput()
+        // ------------------------------------------------------- 名称输入框 / 试玩按钮（prefab 预置节点，按名字绑定）
+        // 两个控件已固化为 LevelEditor.prefab 内的节点（Header 下），位置可在编辑器手动调整；
+        // 运行时只做查找绑定，绝不改它们的 transform。
+
+        /// <summary>绑定 prefab 内的 LE_Name 输入框，保存/试玩时写入 Data.name。</summary>
+        void BindNameInput()
         {
-            if (DeepFind(transform, "LE_Name") != null) return;
+            _nameInput = DeepFind(transform, "LE_Name")?.GetComponent<InputField>();
+            if (_nameInput == null)
+                Debug.LogWarning("[GameEditorShell] LevelEditor prefab 缺少 LE_Name（InputField），关卡名将退回默认");
+        }
 
-            Font font = null;
-            var anyText = GetComponentInChildren<Text>(true);
-            if (anyText != null) font = anyText.font;
-
-            // 挂进 Header 与原生按钮同排（此前挂在页面根，坐标错排还压住了「返回」按钮）。
-            var back = DeepFind(transform, "BtnBack") as RectTransform;
-            var parent = back != null ? back.parent : transform;
-
-            var go = new GameObject("LE_Name");
-            go.transform.SetParent(parent, false);
-            var rt = go.AddComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f); rt.pivot = new Vector2(0f, 1f);
-            // x 取「返回」按钮右缘 + 16（跟随 prefab 手调位置，不硬编码）；
-            // y 与「返回」同款 -22，保证同一行对齐。
-            float backRight = back != null
-                ? back.anchoredPosition.x + back.sizeDelta.x * (1f - back.pivot.x)
-                : 140f;
-            rt.anchoredPosition = new Vector2(backRight + 16f, -22f);
-            rt.sizeDelta = new Vector2(400, 64);
-            var img = go.AddComponent<Image>();
-            img.color = new Color(1f, 1f, 1f, 0.94f);
-            img.raycastTarget = true;
-            var inp = go.AddComponent<InputField>();
-            inp.targetGraphic = img;
-            inp.transition = Selectable.Transition.ColorTint;
-
-            var txt = new GameObject("Text");
-            txt.transform.SetParent(go.transform, false);
-            var trt = txt.AddComponent<RectTransform>();
-            trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
-            trt.offsetMin = new Vector2(16, 6); trt.offsetMax = new Vector2(-16, -6);
-            var t = txt.AddComponent<Text>();
-            t.font = font; t.fontSize = 30; t.alignment = TextAnchor.MiddleLeft;
-            t.color = new Color(0.25f, 0.14f, 0.01f);
-
-            var ph = new GameObject("Placeholder");
-            ph.transform.SetParent(go.transform, false);
-            var prt = ph.AddComponent<RectTransform>();
-            prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one;
-            prt.offsetMin = new Vector2(16, 6); prt.offsetMax = new Vector2(-16, -6);
-            var pt = ph.AddComponent<Text>();
-            pt.font = font; pt.fontSize = 30; pt.alignment = TextAnchor.MiddleLeft;
-            pt.color = new Color(0.55f, 0.5f, 0.45f);
-            pt.text = "输入关卡名称…";
-
-            inp.textComponent = t;
-            inp.placeholder = pt;
-            _nameInput = inp;
+        /// <summary>绑定 prefab 内的 BtnPlay → 试玩。</summary>
+        void BindPlayButton()
+        {
+            var t = DeepFind(transform, "BtnPlay");
+            if (t == null) { Debug.LogWarning("[GameEditorShell] LevelEditor prefab 缺少 BtnPlay，试玩不可用"); return; }
+            var b = t.GetComponent<Button>();
+            if (b != null) b.onClick.AddListener(DoPlayTest);
         }
 
         /// <summary>把输入框内容写进 Data.name；id 为默认值时派生一个稳定 id（ASCII 名直接用，否则时间戳）。</summary>
@@ -228,34 +193,6 @@ namespace Sokoban.Game
                     ? "custom_" + sanitized.ToLower()
                     : "custom_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
             }
-        }
-
-        // ------------------------------------------------------- 试玩按钮（运行时克隆「校验」按钮，免改 prefab）
-        /// <summary>Header 内「保存」按钮左侧加「试玩」按钮；页面不销毁，故用存在性守护避免重复。</summary>
-        void EnsurePlayButton()
-        {
-            if (DeepFind(transform, "BtnPlay") != null) return;
-            var tpl = DeepFind(transform, "BtnValidate");
-            if (tpl == null) return;
-            // 挂进 Header 与原生按钮同排（此前挂在页面根的右上 (-20,-22)，正好压住了「保存」按钮）。
-            var save = DeepFind(transform, "BtnSave") as RectTransform;
-            var parent = save != null ? save.parent : transform;
-            var go = Instantiate(tpl.gameObject, parent, false);
-            go.name = "BtnPlay";
-            var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            rt.anchorMin = rt.anchorMax = new Vector2(1, 1);
-            rt.pivot = new Vector2(1, 1);
-            // x 取「保存」按钮左缘 - 16（跟随 prefab 手调位置，不硬编码）；y 同排 -22。
-            float saveLeft = save != null
-                ? save.anchoredPosition.x - save.sizeDelta.x * save.pivot.x
-                : -140f;
-            rt.anchoredPosition = new Vector2(saveLeft - 16f, -22f);
-            rt.sizeDelta = new Vector2(140, 64);
-            var label = go.GetComponentInChildren<Text>();
-            if (label != null) label.text = "试玩";
-            var btn = go.GetComponent<Button>();
-            if (btn != null) { btn.onClick.RemoveAllListeners(); btn.onClick.AddListener(DoPlayTest); }
         }
 
         void DoPlayTest()

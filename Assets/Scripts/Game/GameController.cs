@@ -15,6 +15,7 @@ namespace Sokoban.Game
         public bool IsPaused { get; private set; }
 
         public event Action<StepDetail> OnStepTaken;
+        public event Action OnStepBlocked;    // 撞墙 / 推不动（半步无效）→ 音效层播反馈音
         public event Action OnWin;
         public event Action OnWorldChanged;   // 撤销/重做/重置后视图层重刷
 
@@ -42,7 +43,11 @@ namespace Sokoban.Game
             if (Mode == null || IsPaused) return StepResult.NoOp;
 
             var result = Mode.Step(dir, out var detail);
-            if (result == StepResult.NoOp) return result;
+            if (result == StepResult.NoOp)
+            {
+                OnStepBlocked?.Invoke();
+                return result;
+            }
 
             OnStepTaken?.Invoke(detail);
             if (Mode.IsWon) OnWin?.Invoke();

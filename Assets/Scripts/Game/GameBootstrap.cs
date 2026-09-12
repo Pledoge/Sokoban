@@ -41,8 +41,21 @@ namespace Sokoban.Game
                 }
             };
 
+            // —— 音频：BGM 常驻，音效跟随事件 ——
+            // 只在「走了一步」时跟踪箱子归位，撤销/重置/读关不会误报归位音。
+            var audio = AudioManager.Ensure();
+            audio.PlayBgm();
+            kb.OnMuteRequested += audio.ToggleMute;
+            kb.OnUndoRequested += audio.PlayUndo;
+            kb.OnRedoRequested += audio.PlayUndo;
+            kb.OnResetRequested += audio.PlayUndo;
+
             controller.OnWorldChanged += HandleWorldChanged;
             controller.OnStepTaken += _ => HandleWorldChanged();
+            controller.OnStepTaken += audio.PlayStep;
+            controller.OnStepTaken += _ => audio.TrackBoard(controller.Mode?.State);
+            controller.OnStepBlocked += audio.PlayBlocked;
+            controller.OnWin += audio.PlayWin;
             controller.OnWin += HandleWin;
 
             GetComponent<UIRouter>().Init(this);
@@ -120,6 +133,7 @@ namespace Sokoban.Game
         public void OpenPause()
         {
             controller.Pause(true);
+            AudioManager.I?.SetPaused(true);            // BGM 压低而非切断
             UIRouter.I.Show(UIRouter.Page.Pause);
         }
 
@@ -127,14 +141,17 @@ namespace Sokoban.Game
         public void ClosePause()
         {
             controller.Pause(false);
+            AudioManager.I?.SetPaused(false);
             UIRouter.I.Show(UIRouter.Page.Playing);
         }
 
         public void ReplayLevel()
         {
+            AudioManager.I?.ResetTracking();             // 重玩 → 归位音对比基准清零
             controller.LoadLevel(_current);              // LoadLevel 内部重建模式（步数/撤销清零）
             board.Bind(controller.Mode.State, _current);
             controller.Pause(false);                     // 从暂停页重玩时解除暂停
+            AudioManager.I?.SetPaused(false);
             UIRouter.I.RefreshHud(_current, controller.Mode);
             UIRouter.I.Show(UIRouter.Page.Playing);      // 从结算/暂停页切回游戏页
         }
@@ -160,6 +177,7 @@ namespace Sokoban.Game
             controller.LoadLevel(_current);
             board.Bind(controller.Mode.State, _current);
             FitCamera(_current);
+            AudioManager.I?.ResetTracking();               // 新关卡 → 归位音对比基准清零
             UIRouter.I.RefreshHud(_current, controller.Mode);
         }
 

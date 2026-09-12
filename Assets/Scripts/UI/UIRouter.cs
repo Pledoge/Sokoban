@@ -347,7 +347,7 @@ namespace Sokoban.Game
                 var label = go.GetComponentInChildren<Text>();
                 if (label != null) label.text = "返回编辑器";
                 var btn = go.GetComponent<Button>();
-                if (btn != null) { btn.onClick.RemoveAllListeners(); btn.onClick.AddListener(() => _game.BackToEditor()); }
+                if (btn != null) { btn.onClick.RemoveAllListeners(); btn.onClick.AddListener(() => { AudioManager.Click(); _game.BackToEditor(); }); }
                 go.SetActive(false);
                 _editorReturnBtns.Add(go);
             }
@@ -555,7 +555,7 @@ namespace Sokoban.Game
             var lt = lab.AddComponent<Text>();
             lt.font = _uiFont;
             lt.color = new Color(0.25f, 0.14f, 0.01f); lt.fontSize = 28; lt.alignment = TextAnchor.MiddleCenter; lt.text = label;
-            btn.onClick.AddListener(action);
+            btn.onClick.AddListener(() => { AudioManager.Click(); action(); });
             return btn;
         }
 
@@ -602,7 +602,7 @@ namespace Sokoban.Game
                     if (_lsTexts[i] != null) _lsTexts[i].text = $"{fIdx + 1:D2} · {_lsAll[local].name}";
                     btn.gameObject.SetActive(true);
                     btn.onClick.RemoveAllListeners();
-                    btn.onClick.AddListener(() => _game.StartLevelAt(g));
+                    btn.onClick.AddListener(() => { AudioManager.Click(); _game.StartLevelAt(g); });
                 }
                 else
                 {
@@ -667,7 +667,7 @@ namespace Sokoban.Game
             if (t == null) { Debug.LogWarning($"[UIRouter] 找不到按钮 '{btnName}'（{page}）"); return; }
             var btn = t.GetComponent<Button>();
             if (btn == null) { Debug.LogWarning($"[UIRouter] '{btnName}' 上没有 Button 组件"); return; }
-            btn.onClick.AddListener(action);
+            btn.onClick.AddListener(() => { AudioManager.Click(); action(); });
         }
 
         static Transform DeepFind(Transform parent, string name)

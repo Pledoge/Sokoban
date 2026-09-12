@@ -14,6 +14,7 @@ namespace Sokoban.Game
         public event Action OnResetRequested;
         public event Action OnNextLevelRequested;
         public event Action OnPauseRequested;
+        public event Action OnMuteRequested;      // M：静音开关
 
         void Update()
         {
@@ -27,6 +28,7 @@ namespace Sokoban.Game
             if (Input.GetKeyDown(KeyCode.R)) OnResetRequested?.Invoke();
             if (Input.GetKeyDown(KeyCode.N)) OnNextLevelRequested?.Invoke();
             if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P)) OnPauseRequested?.Invoke();
+            if (Input.GetKeyDown(KeyCode.M)) OnMuteRequested?.Invoke();
         }
     }
 }

@@ -183,6 +183,34 @@ namespace Sokoban.Tests
             Assert.AreEqual(1, mode.UndoCount);
             Assert.IsFalse(mode.CanUndo);
         }
+
+        [Test]
+        public void ClassicLevel_StaleEnemySpawn_DoesNotSpawnEnemy()
+        {
+            // 编辑器把关卡从「拓展」切回「经典」时只清了格子里的敌人，enemySpawn 曾残留 →
+            // 存出来的经典关卡带着敌人出生点，运行时就会冒出邪恶推箱人（BUG：经典模式的 114514 关）。
+            var rows = new[]
+            {
+                "######",
+                "#P...#",
+                "#.B.G#",
+                "#...E#",
+                "######",
+            };
+
+            var classic = TestLevels.Make(rows);                  // 默认 Mode.Classic，但地图里有 'E'
+            Assert.IsFalse(classic.HasEnemy, "经典模式不应生成敌人");
+            var cm = new ClassicMode(classic);
+            Assert.IsFalse(cm.State.HasEnemy);
+            cm.Step(Direction.Up, out var cd);
+            Assert.IsFalse(cd.enemyMoved, "经典模式不该有敌人跟随移动");
+
+            // 同一份地图数据切到拓展模式 → 敌人照常出现（收口在 mode，而非把数据丢掉）
+            var extended = TestLevels.Make(rows, Mode.Extended);
+            Assert.IsTrue(extended.HasEnemy);
+            var em = new ExtendedMode(extended);
+            Assert.IsTrue(em.State.HasEnemy);
+        }
     }
 
     /// <summary>计步规则用例（v3）。</summary>
@@ -237,5 +265,6 @@ namespace Sokoban.Tests
             Assert.IsTrue(d.enemyMoved);
             Assert.AreEqual(1, mode.StepCount);
         }
+
     }
 }

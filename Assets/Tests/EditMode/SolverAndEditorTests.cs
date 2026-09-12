@@ -42,6 +42,44 @@ namespace Sokoban.Tests
         }
 
         [Test]
+        public void Deadlock_WallLine_SealedBothEnds_IsDead()
+        {
+            // 整条贴墙线（上下都是墙）+ 左右被外墙封死 + 段内无 goal → 箱子只能沿墙滑，永远到不了终点
+            var lv = TestLevels.Make(new[]
+            {
+                "#######",
+                "#B....#",
+                "#######",
+            });
+            var dead = Deadlock.ComputeDeadSquares(new WorldState(lv));
+            for (int x = 1; x <= 5; x++)
+                Assert.IsTrue(dead[1 * lv.width + x], $"({x},1) 贴墙且两端封死，应判死格");
+        }
+
+        [Test]
+        public void Deadlock_WallLine_OpenEnd_NotDead()      // 回归：贴墙段两端未封死不是死格
+        {
+            // 下排留了一个缺口 → 箱子能从贴墙线滑出去、再被垂直推开 → 不是死格。
+            // 旧实现漏了「封端检查」，把这种格子全判死 → microban 里 143/155 关被误判无解。
+            var lv = TestLevels.Make(new[]
+            {
+                "#######",
+                "#P....#",
+                "#.B..G#",
+                "###.###",
+            });
+            var ws = new WorldState(lv);
+            var dead = Deadlock.ComputeDeadSquares(ws);
+
+            Assert.IsFalse(dead[ws.Index(new Vec2Int(2, 1))], "(2,1) 贴墙但有开口，不该判死格");
+            Assert.IsFalse(dead[ws.Index(new Vec2Int(4, 1))], "(4,1) 同理");
+
+            var r = SolverRouter.Solve(lv, 4000);
+            Assert.AreEqual(SolveStatus.Solvable, r.status, "贴墙但有滑出路径的关卡不应被判无解");
+            Assert.AreEqual(4, r.steps, "1 步走位 + 3 步推箱");
+        }
+
+        [Test]
         public void Solver_ExtendedMode_WithEnemy_Solvable()
         {
             var r = SolverRouter.Solve(TestLevels.Make(new[]

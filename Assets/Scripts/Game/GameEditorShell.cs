@@ -337,8 +337,13 @@ namespace Sokoban.Game
         {
             _core.Data.mode = mode;
             if (mode == Mode.Classic)
+            {
+                // 清敌人必须「格子 + 出生点」一起清：
+                // 只清格子的话 enemySpawn 会残留，存出来的经典关卡仍带着敌人出生点。
                 for (int i = 0; i < _core.Data.cells.Length; i++)
                     if (_core.Data.cells[i] == (int)CellType.Enemy) _core.Data.cells[i] = 0;
+                _core.Data.enemySpawn = new Vec2Int(-99, -99);
+            }
             RefreshAll();
             UpdateStatus("模式：" + (mode == Mode.Extended ? "拓展（邪恶推箱人）" : "经典"));
         }

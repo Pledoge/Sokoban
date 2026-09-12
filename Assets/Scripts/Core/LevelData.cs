@@ -26,7 +26,13 @@ namespace Sokoban.Core
         public Vec2Int playerSpawn = new Vec2Int(1, 1);
         public Vec2Int enemySpawn = new Vec2Int(-99, -99);   // 不存在时用界外值表示
 
-        public bool HasEnemy => enemySpawn.x >= 0 && enemySpawn.y >= 0
+        /// <summary>
+        /// 是否真的生成邪恶推箱人 —— 经典模式恒为 false（GDD §3：经典模式无敌人）。
+        /// 用 mode 收口：编辑器把关卡从拓展切回经典时 enemySpawn 可能残留，
+        /// 只按坐标判定会让经典关卡冒出敌人（WorldState 直接吃这个属性）。
+        /// </summary>
+        public bool HasEnemy => mode == Mode.Extended
+                                             && enemySpawn.x >= 0 && enemySpawn.y >= 0
                                              && enemySpawn.x < width && enemySpawn.y < height;
 
         public int Index(int x, int y) => y * width + x;
